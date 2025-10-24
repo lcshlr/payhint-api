@@ -1,0 +1,59 @@
+# PayHint API - Application Configuration Template
+# Copy this file to application.yml and application-dev.yml / application-prod.yml
+# Replace placeholders with actual values (DO NOT commit actual values to Git)
+
+spring:
+  application:
+    name: payhint-api
+
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:payhint_db}
+    username: ${DB_USERNAME:your_db_username}
+    password: ${DB_PASSWORD:your_db_password}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: ${DDL_AUTO:validate}
+    show-sql: ${SHOW_SQL:false}
+    properties:
+      hibernate:
+        format_sql: true
+        use_sql_comments: true
+
+jwt:
+  secret: ${JWT_SECRET:your-256-bit-secret-key-replace-this-in-production}
+  expiration: ${JWT_EXPIRATION:86400000}
+  refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800000}
+
+payhint:
+  admin:
+    email: ${ADMIN_EMAIL:admin@payhint.com}
+    password: ${ADMIN_PASSWORD:change-this-password}
+    name: ${ADMIN_NAME:Administrator}
+
+logging:
+  level:
+    root: ${LOG_LEVEL_ROOT:INFO}
+    "[com.payhint.api]": ${LOG_LEVEL_APP:DEBUG}
+    "[org.springframework.security]": ${LOG_LEVEL_SECURITY:DEBUG}
+    "[org.hibernate.SQL]": ${LOG_LEVEL_SQL:DEBUG}
+    "[org.hibernate.type.descriptor.sql.BasicBinder]": ${LOG_LEVEL_SQL_PARAMS:TRACE}
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: ${LOG_FILE:logs/payhint-api.log}
+    max-size: ${LOG_MAX_SIZE:10MB}
+    max-history: ${LOG_MAX_HISTORY:30}
+
+server:
+  port: ${SERVER_PORT:8080}
+  error:
+    include-message: always
+    include-binding-errors: always
+    include-stacktrace: ${INCLUDE_STACKTRACE:on_param}
+  compression:
+    enabled: true
+    mime-types: application/json,application/xml,text/html,text/xml,text/plain

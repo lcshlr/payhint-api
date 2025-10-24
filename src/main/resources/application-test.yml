@@ -1,0 +1,38 @@
+spring:
+  application:
+    name: PayHint
+  datasource:
+    url: jdbc:h2:mem:testdb;MODE=PostgreSQL
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+  h2:
+    console:
+      enabled: false
+
+server:
+  error:
+    include-message: always
+    include-binding-errors: always
+
+application:
+  security:
+    jwt:
+      secret: test-secret-key-for-jwt-token-generation-with-sufficient-length-to-meet-requirements-minimum-256-bits
+      expiration: 86400000
+
+logging:
+  level:
+    "[com.payhint.api]": INFO
+    "[org.springframework.security]": WARN
+    "[org.hibernate.SQL]": WARN
+    "[org.hibernate.type.descriptor.sql.BasicBinder]": WARN
