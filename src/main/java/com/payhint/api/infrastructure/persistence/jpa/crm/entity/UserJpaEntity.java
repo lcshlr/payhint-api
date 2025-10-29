@@ -2,12 +2,10 @@ package com.payhint.api.infrastructure.persistence.jpa.crm.entity;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.userdetails.UserDetails;
+import com.payhint.api.infrastructure.utils.Normalize;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -30,7 +28,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class UserJpaEntity implements UserDetails {
+public class UserJpaEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -57,34 +55,18 @@ public class UserJpaEntity implements UserDetails {
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
-    private List<ClientJpaEntity> clients = new ArrayList<>();
+    private List<CustomerJpaEntity> customers = new ArrayList<>();
 
     @PrePersist
     protected void onCreate() {
-        normalizeEmail();
+        email = Normalize.email(email);
         createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
     }
 
     @PreUpdate
     protected void onUpdate() {
-        normalizeEmail();
+        email = Normalize.email(email);
         updatedAt = LocalDateTime.now();
-    }
-
-    private void normalizeEmail() {
-        if (email != null) {
-            email = email.toLowerCase();
-        }
-    }
-
-    @Override
-    public Collection<? extends GrantedAuthority> getAuthorities() {
-        return List.of();
-    }
-
-    @Override
-    public String getUsername() {
-        return email;
     }
 }

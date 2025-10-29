@@ -11,7 +11,7 @@ import com.payhint.api.infrastructure.persistence.jpa.crm.entity.UserJpaEntity;
 public interface UserPersistenceMapper {
 
     @Mapping(target = "email", source = "email")
-    @Mapping(target = "clients", ignore = true)
+    @Mapping(target = "customers", ignore = true)
     UserJpaEntity toEntity(User user);
 
     @Mapping(target = "email", source = "email")

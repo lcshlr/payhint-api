@@ -14,6 +14,9 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import com.payhint.api.application.crm.dto.response.error.ErrorResponse;
+import com.payhint.api.application.shared.exceptions.AlreadyExistException;
+import com.payhint.api.application.shared.exceptions.NotFoundException;
+import com.payhint.api.application.shared.exceptions.PermissionDeniedException;
 
 import jakarta.servlet.http.HttpServletRequest;
 
@@ -22,9 +25,8 @@ public class GlobalExceptionHandler {
 
         private static final Logger logger = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
-        @ExceptionHandler(ResourceNotFoundException.class)
-        public ResponseEntity<ErrorResponse> handleResourceNotFound(ResourceNotFoundException ex,
-                        HttpServletRequest request) {
+        @ExceptionHandler(NotFoundException.class)
+        public ResponseEntity<ErrorResponse> handleResourceNotFound(NotFoundException ex, HttpServletRequest request) {
                 logger.warn("Resource not found: {}", ex.getMessage());
 
                 ErrorResponse error = ErrorResponse.builder().timestamp(LocalDateTime.now())
@@ -45,6 +47,17 @@ public class GlobalExceptionHandler {
                                 .path(request.getRequestURI()).build();
 
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
+        }
+
+        @ExceptionHandler(AlreadyExistException.class)
+        public ResponseEntity<ErrorResponse> handleAlreadyExist(AlreadyExistException ex, HttpServletRequest request) {
+                logger.warn("Resource already exists: {}", ex.getMessage());
+
+                ErrorResponse error = ErrorResponse.builder().timestamp(LocalDateTime.now())
+                                .status(HttpStatus.CONFLICT.value()).error(HttpStatus.CONFLICT.getReasonPhrase())
+                                .message(ex.getMessage()).path(request.getRequestURI()).build();
+
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
         }
 
         @ExceptionHandler(AuthenticationException.class)
@@ -86,6 +99,18 @@ public class GlobalExceptionHandler {
                                 .message(ex.getMessage()).path(request.getRequestURI()).build();
 
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+        }
+
+        @ExceptionHandler(PermissionDeniedException.class)
+        public ResponseEntity<ErrorResponse> handlePermissionDenied(PermissionDeniedException ex,
+                        HttpServletRequest request) {
+                logger.warn("Permission denied: {}", ex.getMessage());
+
+                ErrorResponse error = ErrorResponse.builder().timestamp(LocalDateTime.now())
+                                .status(HttpStatus.FORBIDDEN.value()).error(HttpStatus.FORBIDDEN.getReasonPhrase())
+                                .message(ex.getMessage()).path(request.getRequestURI()).build();
+
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
         }
 
         @ExceptionHandler(Exception.class)

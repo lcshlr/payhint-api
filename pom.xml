@@ -12,7 +12,7 @@
 	<artifactId>payhint-api</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name>PayHint</name>
-	<description>API Spring Boot pour la gestion et l&apos;automatisation des paiements freelance.</description>
+	<description>API Spring Boot pour permettre aux freelances de suivre les paiements de leurs clients et envoyer des rappels.</description>
 	<url/>
 	<licenses>
 		<license/>
@@ -146,6 +146,19 @@
 							<artifactId>lombok</artifactId>
 						</exclude>
 					</excludes>
+				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>com.diffplug.spotless</groupId>
+				<artifactId>spotless-maven-plugin</artifactId>
+				<version>2.43.0</version>
+				<configuration>
+					<java>
+						<removeUnusedImports/>
+						<importOrder>
+							<order>java,javax,org,com</order>
+						</importOrder>
+					</java>
 				</configuration>
 			</plugin>
 		</plugins>

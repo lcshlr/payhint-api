@@ -20,8 +20,14 @@ import com.payhint.api.application.crm.dto.request.LoginUserRequest;
 import com.payhint.api.application.crm.dto.request.RegisterUserRequest;
 import com.payhint.api.application.crm.dto.response.LoginResponse;
 import com.payhint.api.application.crm.dto.response.UserResponse;
+import com.payhint.api.application.shared.exceptions.AlreadyExistException;
+import com.payhint.api.domain.crm.model.User;
 import com.payhint.api.domain.crm.repository.UserRepository;
+import com.payhint.api.domain.crm.valueobjects.Email;
+import com.payhint.api.domain.crm.valueobjects.UserId;
 import com.payhint.api.infrastructure.security.JwtTokenProvider;
+
+import jakarta.validation.ConstraintViolationException;
 
 @SpringBootTest
 @TestPropertySource(properties = { "spring.datasource.url=jdbc:h2:mem:testdb",
@@ -57,16 +63,12 @@ class AuthenticationServiceIntegrationTest {
 
         @BeforeEach
         void setUp() {
-            validRequest = new RegisterUserRequest();
-            validRequest.setEmail(TEST_EMAIL);
-            validRequest.setPassword(TEST_PASSWORD);
-            validRequest.setFirstName(TEST_FIRST_NAME);
-            validRequest.setLastName(TEST_LAST_NAME);
+            validRequest = new RegisterUserRequest(TEST_EMAIL, TEST_PASSWORD, TEST_FIRST_NAME, TEST_LAST_NAME);
         }
 
         @AfterEach
         void tearDown() {
-            userRepository.findByEmail(TEST_EMAIL).ifPresent(user -> userRepository.deleteById(user.getId()));
+            userRepository.findByEmail(new Email(TEST_EMAIL)).ifPresent(user -> userRepository.delete(user));
         }
 
         @Test
@@ -80,7 +82,7 @@ class AuthenticationServiceIntegrationTest {
             assertThat(response.firstName()).isEqualTo(TEST_FIRST_NAME);
             assertThat(response.lastName()).isEqualTo(TEST_LAST_NAME);
 
-            var savedUser = userRepository.findById(response.id());
+            var savedUser = userRepository.findById(new UserId(response.id()));
             assertThat(savedUser).isPresent();
             assertThat(savedUser.get().getEmail().value()).isEqualTo(TEST_EMAIL.toLowerCase());
             assertThat(passwordEncoder.matches(TEST_PASSWORD, savedUser.get().getPassword())).isTrue();
@@ -91,7 +93,7 @@ class AuthenticationServiceIntegrationTest {
         void shouldEncryptPassword() {
             UserResponse response = authenticationService.register(validRequest);
 
-            var savedUser = userRepository.findById(response.id());
+            var savedUser = userRepository.findById(new UserId(response.id()));
             assertThat(savedUser).isPresent();
             assertThat(savedUser.get().getPassword()).isNotEqualTo(TEST_PASSWORD);
             assertThat(savedUser.get().getPassword()).startsWith("$2a$");
@@ -103,14 +105,11 @@ class AuthenticationServiceIntegrationTest {
         void shouldThrowExceptionWhenDuplicateEmail() {
             authenticationService.register(validRequest);
 
-            RegisterUserRequest duplicateRequest = new RegisterUserRequest();
-            duplicateRequest.setEmail(TEST_EMAIL);
-            duplicateRequest.setPassword("AnotherPassword123!");
-            duplicateRequest.setFirstName("Another");
-            duplicateRequest.setLastName("User");
+            RegisterUserRequest duplicateRequest = new RegisterUserRequest(TEST_EMAIL, "AnotherPassword123!", "Another",
+                    "User");
 
             assertThatThrownBy(() -> authenticationService.register(duplicateRequest))
-                    .isInstanceOf(IllegalArgumentException.class)
+                    .isInstanceOf(AlreadyExistException.class)
                     .hasMessageContaining("User with email " + TEST_EMAIL + " already exists.");
         }
 
@@ -119,26 +118,24 @@ class AuthenticationServiceIntegrationTest {
         void shouldThrowExceptionWhenDuplicateEmailDifferentCase() {
             authenticationService.register(validRequest);
 
-            RegisterUserRequest duplicateRequest = new RegisterUserRequest();
-            duplicateRequest.setEmail(TEST_EMAIL.toUpperCase());
-            duplicateRequest.setPassword("AnotherPassword123!");
-            duplicateRequest.setFirstName("Another");
-            duplicateRequest.setLastName("User");
+            RegisterUserRequest duplicateRequest = new RegisterUserRequest(TEST_EMAIL.toUpperCase(),
+                    "AnotherPassword123!", "Another", "User");
 
             assertThatThrownBy(() -> authenticationService.register(duplicateRequest))
-                    .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("already exists");
+                    .isInstanceOf(AlreadyExistException.class).hasMessageContaining("already exists");
         }
 
         @Test
         @DisplayName("Should normalize email to lowercase when registering")
         void shouldNormalizeEmailToLowercase() {
-            validRequest.setEmail("MixedCase.Email@PayHint.COM");
+            RegisterUserRequest request = new RegisterUserRequest("MixedCase.Email@PayHint.COM", TEST_PASSWORD,
+                    TEST_FIRST_NAME, TEST_LAST_NAME);
 
-            UserResponse response = authenticationService.register(validRequest);
+            UserResponse response = authenticationService.register(request);
 
             assertThat(response.email()).isEqualTo("mixedcase.email@payhint.com");
 
-            var savedUser = userRepository.findById(response.id());
+            var savedUser = userRepository.findById(new UserId(response.id()));
             assertThat(savedUser).isPresent();
             assertThat(savedUser.get().getEmail().value()).isEqualTo("mixedcase.email@payhint.com");
         }
@@ -148,30 +145,27 @@ class AuthenticationServiceIntegrationTest {
         void shouldRegisterMultipleUsersWithDifferentEmails() {
             UserResponse firstUser = authenticationService.register(validRequest);
 
-            RegisterUserRequest secondRequest = new RegisterUserRequest();
-            secondRequest.setEmail("second.user@payhint.com");
-            secondRequest.setPassword("Password456!");
-            secondRequest.setFirstName("Second");
-            secondRequest.setLastName("User");
+            RegisterUserRequest secondRequest = new RegisterUserRequest("second.user@payhint.com", "Password456!",
+                    "Second", "User");
 
             UserResponse secondUser = authenticationService.register(secondRequest);
 
             assertThat(firstUser.id()).isNotEqualTo(secondUser.id());
             assertThat(firstUser.email()).isNotEqualTo(secondUser.email());
 
-            assertThat(userRepository.findById(firstUser.id())).isPresent();
-            assertThat(userRepository.findById(secondUser.id())).isPresent();
+            assertThat(userRepository.findById(new UserId(firstUser.id()))).isPresent();
+            assertThat(userRepository.findById(new UserId(secondUser.id()))).isPresent();
 
-            userRepository.deleteById(secondUser.id());
+            userRepository.delete(User.builder().id(new UserId(secondUser.id())).build());
         }
 
         @Test
         @DisplayName("Should handle registration with special characters in name")
         void shouldRegisterWithSpecialCharactersInName() {
-            validRequest.setFirstName("Jean-François");
-            validRequest.setLastName("O'Brien-Müller");
+            RegisterUserRequest request = new RegisterUserRequest(TEST_EMAIL, TEST_PASSWORD, "Jean-François",
+                    "O'Brien-Müller");
 
-            UserResponse response = authenticationService.register(validRequest);
+            UserResponse response = authenticationService.register(request);
 
             assertThat(response.firstName()).isEqualTo("Jean-François");
             assertThat(response.lastName()).isEqualTo("O'Brien-Müller");
@@ -183,10 +177,10 @@ class AuthenticationServiceIntegrationTest {
             String longFirstName = "A".repeat(100);
             String longLastName = "B".repeat(100);
 
-            validRequest.setFirstName(longFirstName);
-            validRequest.setLastName(longLastName);
+            RegisterUserRequest request = new RegisterUserRequest(TEST_EMAIL, TEST_PASSWORD, longFirstName,
+                    longLastName);
 
-            UserResponse response = authenticationService.register(validRequest);
+            UserResponse response = authenticationService.register(request);
 
             assertThat(response.firstName()).isEqualTo(longFirstName);
             assertThat(response.lastName()).isEqualTo(longLastName);
@@ -195,12 +189,13 @@ class AuthenticationServiceIntegrationTest {
         @Test
         @DisplayName("Should handle registration with minimum password length")
         void shouldRegisterWithMinimumPasswordLength() {
-            validRequest.setPassword("Pass123!");
+            RegisterUserRequest request = new RegisterUserRequest(TEST_EMAIL, "Pass123!", TEST_FIRST_NAME,
+                    TEST_LAST_NAME);
 
-            UserResponse response = authenticationService.register(validRequest);
+            UserResponse response = authenticationService.register(request);
 
             assertThat(response).isNotNull();
-            var savedUser = userRepository.findById(response.id());
+            var savedUser = userRepository.findById(new UserId(response.id()));
             assertThat(savedUser).isPresent();
             assertThat(passwordEncoder.matches("Pass123!", savedUser.get().getPassword())).isTrue();
         }
@@ -215,24 +210,19 @@ class AuthenticationServiceIntegrationTest {
 
         @BeforeEach
         void setUp() {
-            RegisterUserRequest registerRequest = new RegisterUserRequest();
-            registerRequest.setEmail(TEST_EMAIL);
-            registerRequest.setPassword(TEST_PASSWORD);
-            registerRequest.setFirstName(TEST_FIRST_NAME);
-            registerRequest.setLastName(TEST_LAST_NAME);
+            RegisterUserRequest registerRequest = new RegisterUserRequest(TEST_EMAIL, TEST_PASSWORD, TEST_FIRST_NAME,
+                    TEST_LAST_NAME);
 
             UserResponse registered = authenticationService.register(registerRequest);
             registeredUserId = registered.id();
 
-            validLoginRequest = new LoginUserRequest();
-            validLoginRequest.setEmail(TEST_EMAIL);
-            validLoginRequest.setPassword(TEST_PASSWORD);
+            validLoginRequest = new LoginUserRequest(TEST_EMAIL, TEST_PASSWORD);
         }
 
         @AfterEach
         void tearDown() {
             if (registeredUserId != null) {
-                userRepository.deleteById(registeredUserId);
+                userRepository.delete(User.builder().id(new UserId(registeredUserId)).build());
             }
         }
 
@@ -260,9 +250,9 @@ class AuthenticationServiceIntegrationTest {
         @Test
         @DisplayName("Should login successfully with uppercase email")
         void shouldLoginWithUppercaseEmail() {
-            validLoginRequest.setEmail(TEST_EMAIL.toUpperCase());
+            LoginUserRequest request = new LoginUserRequest(TEST_EMAIL.toUpperCase(), TEST_PASSWORD);
 
-            LoginResponse response = authenticationService.login(validLoginRequest);
+            LoginResponse response = authenticationService.login(request);
 
             assertThat(response).isNotNull();
             assertThat(response.token()).isNotNull();
@@ -274,9 +264,9 @@ class AuthenticationServiceIntegrationTest {
         @Test
         @DisplayName("Should login successfully with mixed case email")
         void shouldLoginWithMixedCaseEmail() {
-            validLoginRequest.setEmail("InTeGrAtIoN.TeSt@PayHint.CoM");
+            LoginUserRequest request = new LoginUserRequest("InTeGrAtIoN.TeSt@PayHint.CoM", TEST_PASSWORD);
 
-            LoginResponse response = authenticationService.login(validLoginRequest);
+            LoginResponse response = authenticationService.login(request);
 
             assertThat(response).isNotNull();
             assertThat(response.token()).isNotNull();
@@ -285,45 +275,42 @@ class AuthenticationServiceIntegrationTest {
         @Test
         @DisplayName("Should throw exception when login with wrong password")
         void shouldThrowExceptionWhenWrongPassword() {
-            validLoginRequest.setPassword("WrongPassword123!");
+            LoginUserRequest request = new LoginUserRequest(TEST_EMAIL, "WrongPassword123!");
 
-            assertThatThrownBy(() -> authenticationService.login(validLoginRequest))
-                    .isInstanceOf(BadCredentialsException.class);
+            assertThatThrownBy(() -> authenticationService.login(request)).isInstanceOf(BadCredentialsException.class);
         }
 
         @Test
         @DisplayName("Should throw exception when login with non-existent email")
         void shouldThrowExceptionWhenNonExistentEmail() {
-            validLoginRequest.setEmail("nonexistent@payhint.com");
+            LoginUserRequest request = new LoginUserRequest("nonexistent@payhint.com", TEST_PASSWORD);
 
-            assertThatThrownBy(() -> authenticationService.login(validLoginRequest))
-                    .isInstanceOf(BadCredentialsException.class);
+            assertThatThrownBy(() -> authenticationService.login(request)).isInstanceOf(BadCredentialsException.class);
         }
 
         @Test
         @DisplayName("Should throw exception when login with empty password")
         void shouldThrowExceptionWhenEmptyPassword() {
-            validLoginRequest.setPassword("");
+            LoginUserRequest request = new LoginUserRequest(TEST_EMAIL, "");
 
-            assertThatThrownBy(() -> authenticationService.login(validLoginRequest))
-                    .isInstanceOf(BadCredentialsException.class);
+            assertThatThrownBy(() -> authenticationService.login(request))
+                    .isInstanceOf(ConstraintViolationException.class);
         }
 
         @Test
         @DisplayName("Should throw exception when login with null password")
         void shouldThrowExceptionWhenNullPassword() {
-            validLoginRequest.setPassword(null);
+            LoginUserRequest request = new LoginUserRequest(TEST_EMAIL, null);
 
-            assertThatThrownBy(() -> authenticationService.login(validLoginRequest)).isInstanceOf(Exception.class);
+            assertThatThrownBy(() -> authenticationService.login(request)).isInstanceOf(Exception.class);
         }
 
         @Test
         @DisplayName("Should throw exception when login with slightly wrong password")
         void shouldThrowExceptionWhenSlightlyWrongPassword() {
-            validLoginRequest.setPassword(TEST_PASSWORD + "x");
+            LoginUserRequest request = new LoginUserRequest(TEST_EMAIL, TEST_PASSWORD + "x");
 
-            assertThatThrownBy(() -> authenticationService.login(validLoginRequest))
-                    .isInstanceOf(BadCredentialsException.class);
+            assertThatThrownBy(() -> authenticationService.login(request)).isInstanceOf(BadCredentialsException.class);
         }
 
         @Test
@@ -345,19 +332,18 @@ class AuthenticationServiceIntegrationTest {
         @Test
         @DisplayName("Should throw exception when password case is incorrect")
         void shouldThrowExceptionWhenPasswordCaseIncorrect() {
-            validLoginRequest.setPassword(TEST_PASSWORD.toLowerCase());
+            LoginUserRequest request = new LoginUserRequest(TEST_EMAIL, TEST_PASSWORD.toLowerCase());
 
-            assertThatThrownBy(() -> authenticationService.login(validLoginRequest))
-                    .isInstanceOf(BadCredentialsException.class);
+            assertThatThrownBy(() -> authenticationService.login(request)).isInstanceOf(BadCredentialsException.class);
         }
 
         @Test
         @DisplayName("Should throw exception when email has extra whitespace")
         void shouldHandleEmailWithWhitespace() {
-            validLoginRequest.setEmail("  " + TEST_EMAIL + "  ");
+            LoginUserRequest request = new LoginUserRequest("  " + TEST_EMAIL + "  ", TEST_PASSWORD);
 
-            assertThatThrownBy(() -> authenticationService.login(validLoginRequest))
-                    .isInstanceOf(BadCredentialsException.class);
+            assertThatThrownBy(() -> authenticationService.login(request))
+                    .isInstanceOf(ConstraintViolationException.class);
         }
     }
 
@@ -370,25 +356,20 @@ class AuthenticationServiceIntegrationTest {
         @AfterEach
         void tearDown() {
             if (registeredUserId != null) {
-                userRepository.deleteById(registeredUserId);
+                userRepository.delete(User.builder().id(new UserId(registeredUserId)).build());
             }
         }
 
         @Test
         @DisplayName("Should login immediately after registration")
         void shouldLoginImmediatelyAfterRegistration() {
-            RegisterUserRequest registerRequest = new RegisterUserRequest();
-            registerRequest.setEmail(TEST_EMAIL);
-            registerRequest.setPassword(TEST_PASSWORD);
-            registerRequest.setFirstName(TEST_FIRST_NAME);
-            registerRequest.setLastName(TEST_LAST_NAME);
+            RegisterUserRequest registerRequest = new RegisterUserRequest(TEST_EMAIL, TEST_PASSWORD, TEST_FIRST_NAME,
+                    TEST_LAST_NAME);
 
             UserResponse userResponse = authenticationService.register(registerRequest);
             registeredUserId = userResponse.id();
 
-            LoginUserRequest loginRequest = new LoginUserRequest();
-            loginRequest.setEmail(TEST_EMAIL);
-            loginRequest.setPassword(TEST_PASSWORD);
+            LoginUserRequest loginRequest = new LoginUserRequest(TEST_EMAIL, TEST_PASSWORD);
 
             LoginResponse loginResponse = authenticationService.login(loginRequest);
 
@@ -400,22 +381,17 @@ class AuthenticationServiceIntegrationTest {
         @Test
         @DisplayName("Should not login with original password after registration if password changed")
         void shouldVerifyPasswordEncodingPersistence() {
-            RegisterUserRequest registerRequest = new RegisterUserRequest();
-            registerRequest.setEmail(TEST_EMAIL);
-            registerRequest.setPassword(TEST_PASSWORD);
-            registerRequest.setFirstName(TEST_FIRST_NAME);
-            registerRequest.setLastName(TEST_LAST_NAME);
+            RegisterUserRequest registerRequest = new RegisterUserRequest(TEST_EMAIL, TEST_PASSWORD, TEST_FIRST_NAME,
+                    TEST_LAST_NAME);
 
             UserResponse userResponse = authenticationService.register(registerRequest);
             registeredUserId = userResponse.id();
 
-            var user = userRepository.findById(registeredUserId);
+            var user = userRepository.findById(new UserId(registeredUserId));
             assertThat(user).isPresent();
             assertThat(user.get().getPassword()).isNotEqualTo(TEST_PASSWORD);
 
-            LoginUserRequest loginRequest = new LoginUserRequest();
-            loginRequest.setEmail(TEST_EMAIL);
-            loginRequest.setPassword(TEST_PASSWORD);
+            LoginUserRequest loginRequest = new LoginUserRequest(TEST_EMAIL, TEST_PASSWORD);
 
             LoginResponse loginResponse = authenticationService.login(loginRequest);
             assertThat(loginResponse.token()).isNotNull();
@@ -424,17 +400,10 @@ class AuthenticationServiceIntegrationTest {
         @Test
         @DisplayName("Should handle concurrent registrations with different emails")
         void shouldHandleConcurrentRegistrations() {
-            RegisterUserRequest firstRequest = new RegisterUserRequest();
-            firstRequest.setEmail(TEST_EMAIL);
-            firstRequest.setPassword(TEST_PASSWORD);
-            firstRequest.setFirstName("First");
-            firstRequest.setLastName("User");
+            RegisterUserRequest firstRequest = new RegisterUserRequest(TEST_EMAIL, TEST_PASSWORD, "First", "User");
 
-            RegisterUserRequest secondRequest = new RegisterUserRequest();
-            secondRequest.setEmail("second.concurrent@payhint.com");
-            secondRequest.setPassword("Password456!");
-            secondRequest.setFirstName("Second");
-            secondRequest.setLastName("User");
+            RegisterUserRequest secondRequest = new RegisterUserRequest("second.concurrent@payhint.com", "Password456!",
+                    "Second", "User");
 
             UserResponse firstResponse = authenticationService.register(firstRequest);
             UserResponse secondResponse = authenticationService.register(secondRequest);
@@ -442,20 +411,17 @@ class AuthenticationServiceIntegrationTest {
             registeredUserId = firstResponse.id();
 
             assertThat(firstResponse.id()).isNotEqualTo(secondResponse.id());
-            assertThat(userRepository.findById(firstResponse.id())).isPresent();
-            assertThat(userRepository.findById(secondResponse.id())).isPresent();
+            assertThat(userRepository.findById(new UserId(firstResponse.id()))).isPresent();
+            assertThat(userRepository.findById(new UserId(secondResponse.id()))).isPresent();
 
-            userRepository.deleteById(secondResponse.id());
+            userRepository.delete(User.builder().id(new UserId(secondResponse.id())).build());
         }
 
         @Test
         @DisplayName("Should maintain data integrity across register and login operations")
         void shouldMaintainDataIntegrity() {
-            RegisterUserRequest registerRequest = new RegisterUserRequest();
-            registerRequest.setEmail("data.integrity@payhint.com");
-            registerRequest.setPassword("IntegrityPass123!");
-            registerRequest.setFirstName("Data");
-            registerRequest.setLastName("Integrity");
+            RegisterUserRequest registerRequest = new RegisterUserRequest("data.integrity@payhint.com",
+                    "IntegrityPass123!", "Data", "Integrity");
 
             UserResponse registeredUser = authenticationService.register(registerRequest);
             registeredUserId = registeredUser.id();
@@ -464,15 +430,13 @@ class AuthenticationServiceIntegrationTest {
             assertThat(registeredUser.firstName()).isEqualTo("Data");
             assertThat(registeredUser.lastName()).isEqualTo("Integrity");
 
-            LoginUserRequest loginRequest = new LoginUserRequest();
-            loginRequest.setEmail("data.integrity@payhint.com");
-            loginRequest.setPassword("IntegrityPass123!");
+            LoginUserRequest loginRequest = new LoginUserRequest("data.integrity@payhint.com", "IntegrityPass123!");
 
             LoginResponse loginResponse = authenticationService.login(loginRequest);
 
             assertThat(loginResponse.token()).isNotNull();
 
-            var persistedUser = userRepository.findById(registeredUserId);
+            var persistedUser = userRepository.findById(new UserId(registeredUserId));
             assertThat(persistedUser).isPresent();
             assertThat(persistedUser.get().getEmail().value()).isEqualTo("data.integrity@payhint.com");
             assertThat(persistedUser.get().getFirstName()).isEqualTo("Data");
@@ -489,27 +453,22 @@ class AuthenticationServiceIntegrationTest {
         @AfterEach
         void tearDown() {
             if (registeredUserId != null) {
-                userRepository.deleteById(registeredUserId);
+                userRepository.delete(User.builder().id(new UserId(registeredUserId)).build());
             }
         }
 
         @Test
         @DisplayName("Should handle registration with email containing plus sign")
         void shouldHandleEmailWithPlusSign() {
-            RegisterUserRequest request = new RegisterUserRequest();
-            request.setEmail("user+test@payhint.com");
-            request.setPassword(TEST_PASSWORD);
-            request.setFirstName(TEST_FIRST_NAME);
-            request.setLastName(TEST_LAST_NAME);
+            RegisterUserRequest request = new RegisterUserRequest("user+test@payhint.com", TEST_PASSWORD,
+                    TEST_FIRST_NAME, TEST_LAST_NAME);
 
             UserResponse response = authenticationService.register(request);
             registeredUserId = response.id();
 
             assertThat(response.email()).isEqualTo("user+test@payhint.com");
 
-            LoginUserRequest loginRequest = new LoginUserRequest();
-            loginRequest.setEmail("user+test@payhint.com");
-            loginRequest.setPassword(TEST_PASSWORD);
+            LoginUserRequest loginRequest = new LoginUserRequest("user+test@payhint.com", TEST_PASSWORD);
 
             LoginResponse loginResponse = authenticationService.login(loginRequest);
             assertThat(loginResponse.token()).isNotNull();
@@ -518,11 +477,8 @@ class AuthenticationServiceIntegrationTest {
         @Test
         @DisplayName("Should handle registration with subdomain email")
         void shouldHandleSubdomainEmail() {
-            RegisterUserRequest request = new RegisterUserRequest();
-            request.setEmail("user@mail.payhint.com");
-            request.setPassword(TEST_PASSWORD);
-            request.setFirstName(TEST_FIRST_NAME);
-            request.setLastName(TEST_LAST_NAME);
+            RegisterUserRequest request = new RegisterUserRequest("user@mail.payhint.com", TEST_PASSWORD,
+                    TEST_FIRST_NAME, TEST_LAST_NAME);
 
             UserResponse response = authenticationService.register(request);
             registeredUserId = response.id();
@@ -533,11 +489,7 @@ class AuthenticationServiceIntegrationTest {
         @Test
         @DisplayName("Should handle registration with single character names")
         void shouldHandleSingleCharacterNames() {
-            RegisterUserRequest request = new RegisterUserRequest();
-            request.setEmail("single.char@payhint.com");
-            request.setPassword(TEST_PASSWORD);
-            request.setFirstName("A");
-            request.setLastName("B");
+            RegisterUserRequest request = new RegisterUserRequest("single.char@payhint.com", TEST_PASSWORD, "A", "B");
 
             UserResponse response = authenticationService.register(request);
             registeredUserId = response.id();
@@ -549,18 +501,13 @@ class AuthenticationServiceIntegrationTest {
         @Test
         @DisplayName("Should handle password with special characters")
         void shouldHandlePasswordWithSpecialCharacters() {
-            RegisterUserRequest request = new RegisterUserRequest();
-            request.setEmail("special.pass@payhint.com");
-            request.setPassword("P@ssw0rd!#$%^&*()");
-            request.setFirstName(TEST_FIRST_NAME);
-            request.setLastName(TEST_LAST_NAME);
+            RegisterUserRequest request = new RegisterUserRequest("special.pass@payhint.com", "P@ssw0rd!#$%^&*()",
+                    TEST_FIRST_NAME, TEST_LAST_NAME);
 
             UserResponse response = authenticationService.register(request);
             registeredUserId = response.id();
 
-            LoginUserRequest loginRequest = new LoginUserRequest();
-            loginRequest.setEmail("special.pass@payhint.com");
-            loginRequest.setPassword("P@ssw0rd!#$%^&*()");
+            LoginUserRequest loginRequest = new LoginUserRequest("special.pass@payhint.com", "P@ssw0rd!#$%^&*()");
 
             LoginResponse loginResponse = authenticationService.login(loginRequest);
             assertThat(loginResponse.token()).isNotNull();
@@ -569,18 +516,13 @@ class AuthenticationServiceIntegrationTest {
         @Test
         @DisplayName("Should handle password with unicode characters")
         void shouldHandlePasswordWithUnicode() {
-            RegisterUserRequest request = new RegisterUserRequest();
-            request.setEmail("unicode.pass@payhint.com");
-            request.setPassword("Pässwörd123!");
-            request.setFirstName(TEST_FIRST_NAME);
-            request.setLastName(TEST_LAST_NAME);
+            RegisterUserRequest request = new RegisterUserRequest("unicode.pass@payhint.com", "Pässwörd123!",
+                    TEST_FIRST_NAME, TEST_LAST_NAME);
 
             UserResponse response = authenticationService.register(request);
             registeredUserId = response.id();
 
-            LoginUserRequest loginRequest = new LoginUserRequest();
-            loginRequest.setEmail("unicode.pass@payhint.com");
-            loginRequest.setPassword("Pässwörd123!");
+            LoginUserRequest loginRequest = new LoginUserRequest("unicode.pass@payhint.com", "Pässwörd123!");
 
             LoginResponse loginResponse = authenticationService.login(loginRequest);
             assertThat(loginResponse.token()).isNotNull();
@@ -589,42 +531,31 @@ class AuthenticationServiceIntegrationTest {
         @Test
         @DisplayName("Should reject registration attempt after successful registration with same email")
         void shouldRejectDuplicateRegistrationAttempt() {
-            RegisterUserRequest firstRequest = new RegisterUserRequest();
-            firstRequest.setEmail("duplicate.check@payhint.com");
-            firstRequest.setPassword(TEST_PASSWORD);
-            firstRequest.setFirstName("First");
-            firstRequest.setLastName("Attempt");
+            RegisterUserRequest firstRequest = new RegisterUserRequest("duplicate.check@payhint.com", TEST_PASSWORD,
+                    "First", "Attempt");
 
             UserResponse firstResponse = authenticationService.register(firstRequest);
             registeredUserId = firstResponse.id();
 
-            RegisterUserRequest secondRequest = new RegisterUserRequest();
-            secondRequest.setEmail("duplicate.check@payhint.com");
-            secondRequest.setPassword("DifferentPass123!");
-            secondRequest.setFirstName("Second");
-            secondRequest.setLastName("Attempt");
+            RegisterUserRequest secondRequest = new RegisterUserRequest("duplicate.check@payhint.com",
+                    "DifferentPass123!", "Second", "Attempt");
 
             assertThatThrownBy(() -> authenticationService.register(secondRequest))
-                    .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("already exists");
+                    .isInstanceOf(AlreadyExistException.class).hasMessageContaining("already exists");
         }
 
         @Test
         @DisplayName("Should handle email with dots")
         void shouldHandleEmailWithDots() {
-            RegisterUserRequest request = new RegisterUserRequest();
-            request.setEmail("first.middle.last@payhint.com");
-            request.setPassword(TEST_PASSWORD);
-            request.setFirstName(TEST_FIRST_NAME);
-            request.setLastName(TEST_LAST_NAME);
+            RegisterUserRequest request = new RegisterUserRequest("first.middle.last@payhint.com", TEST_PASSWORD,
+                    TEST_FIRST_NAME, TEST_LAST_NAME);
 
             UserResponse response = authenticationService.register(request);
             registeredUserId = response.id();
 
             assertThat(response.email()).isEqualTo("first.middle.last@payhint.com");
 
-            LoginUserRequest loginRequest = new LoginUserRequest();
-            loginRequest.setEmail("first.middle.last@payhint.com");
-            loginRequest.setPassword(TEST_PASSWORD);
+            LoginUserRequest loginRequest = new LoginUserRequest("first.middle.last@payhint.com", TEST_PASSWORD);
 
             LoginResponse loginResponse = authenticationService.login(loginRequest);
             assertThat(loginResponse.token()).isNotNull();
@@ -635,18 +566,13 @@ class AuthenticationServiceIntegrationTest {
         void shouldHandleMaximumLengthPassword() {
             String maxPassword = "A".repeat(30);
 
-            RegisterUserRequest request = new RegisterUserRequest();
-            request.setEmail("max.password@payhint.com");
-            request.setPassword(maxPassword);
-            request.setFirstName(TEST_FIRST_NAME);
-            request.setLastName(TEST_LAST_NAME);
+            RegisterUserRequest request = new RegisterUserRequest("max.password@payhint.com", maxPassword,
+                    TEST_FIRST_NAME, TEST_LAST_NAME);
 
             UserResponse response = authenticationService.register(request);
             registeredUserId = response.id();
 
-            LoginUserRequest loginRequest = new LoginUserRequest();
-            loginRequest.setEmail("max.password@payhint.com");
-            loginRequest.setPassword(maxPassword);
+            LoginUserRequest loginRequest = new LoginUserRequest("max.password@payhint.com", maxPassword);
 
             LoginResponse loginResponse = authenticationService.login(loginRequest);
             assertThat(loginResponse.token()).isNotNull();

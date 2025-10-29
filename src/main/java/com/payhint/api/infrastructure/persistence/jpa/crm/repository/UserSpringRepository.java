@@ -1,12 +1,13 @@
 package com.payhint.api.infrastructure.persistence.jpa.crm.repository;
 
+import java.util.Optional;
+import java.util.UUID;
+
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Repository;
 
 import com.payhint.api.infrastructure.persistence.jpa.crm.entity.UserJpaEntity;
-
-import java.util.Optional;
-import java.util.UUID;
 
 @Repository
 public interface UserSpringRepository extends JpaRepository<UserJpaEntity, UUID> {
@@ -14,4 +15,6 @@ public interface UserSpringRepository extends JpaRepository<UserJpaEntity, UUID>
     Optional<UserJpaEntity> findByEmail(String email);
 
     boolean existsByEmail(String email);
+
+    boolean existsById(@NonNull UUID id);
 }

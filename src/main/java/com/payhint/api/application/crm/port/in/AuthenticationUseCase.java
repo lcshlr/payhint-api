@@ -5,8 +5,10 @@ import com.payhint.api.application.crm.dto.request.RegisterUserRequest;
 import com.payhint.api.application.crm.dto.response.LoginResponse;
 import com.payhint.api.application.crm.dto.response.UserResponse;
 
-public interface AuthenticationUseCase {
-    UserResponse register(RegisterUserRequest request);
+import jakarta.validation.Valid;
 
-    LoginResponse login(LoginUserRequest request);
+public interface AuthenticationUseCase {
+    UserResponse register(@Valid RegisterUserRequest request);
+
+    LoginResponse login(@Valid LoginUserRequest request);
 }

@@ -1,16 +1,12 @@
 package com.payhint.api.application.crm.dto.response.error;
 
-import lombok.AllArgsConstructor;
+import java.time.LocalDateTime;
+
 import lombok.Builder;
 import lombok.Data;
-import lombok.NoArgsConstructor;
-
-import java.time.LocalDateTime;
 
 @Data
 @Builder
-@NoArgsConstructor
-@AllArgsConstructor
 public class ErrorResponse {
 
     private LocalDateTime timestamp;

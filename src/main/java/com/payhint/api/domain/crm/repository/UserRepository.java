@@ -1,19 +1,22 @@
 package com.payhint.api.domain.crm.repository;
 
 import java.util.Optional;
-import java.util.UUID;
 
 import com.payhint.api.domain.crm.model.User;
+import com.payhint.api.domain.crm.valueobjects.Email;
+import com.payhint.api.domain.crm.valueobjects.UserId;
 
 public interface UserRepository {
 
     User register(User user);
 
-    Optional<User> findById(UUID id);
+    Optional<User> findById(UserId userId);
 
-    Optional<User> findByEmail(String email);
+    Optional<User> findByEmail(Email email);
 
-    boolean existsByEmail(String email);
+    boolean existsByEmail(Email email);
 
-    void deleteById(UUID id);
+    boolean existsById(UserId userId);
+
+    void delete(User user);
 }

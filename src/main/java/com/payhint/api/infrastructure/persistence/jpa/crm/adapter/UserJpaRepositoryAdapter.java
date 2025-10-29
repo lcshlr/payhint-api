@@ -1,59 +1,55 @@
 package com.payhint.api.infrastructure.persistence.jpa.crm.adapter;
 
+import java.util.Optional;
+
+import org.springframework.stereotype.Repository;
+
 import com.payhint.api.domain.crm.model.User;
 import com.payhint.api.domain.crm.repository.UserRepository;
+import com.payhint.api.domain.crm.valueobjects.Email;
+import com.payhint.api.domain.crm.valueobjects.UserId;
+import com.payhint.api.infrastructure.persistence.jpa.crm.entity.UserJpaEntity;
 import com.payhint.api.infrastructure.persistence.jpa.crm.mapper.UserPersistenceMapper;
 import com.payhint.api.infrastructure.persistence.jpa.crm.repository.UserSpringRepository;
 
 import lombok.RequiredArgsConstructor;
 
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
-import org.springframework.stereotype.Repository;
-
-import java.util.Optional;
-import java.util.UUID;
-
 @Repository
 @RequiredArgsConstructor
-public class UserJpaRepositoryAdapter implements UserRepository, UserDetailsService {
+public class UserJpaRepositoryAdapter implements UserRepository {
 
     private final UserSpringRepository springDataUserRepository;
     private final UserPersistenceMapper mapper;
 
     @Override
     public User register(User user) {
-        var entity = mapper.toEntity(user);
-        var savedEntity = springDataUserRepository.save(entity);
+        UserJpaEntity entity = mapper.toEntity(user);
+        UserJpaEntity savedEntity = springDataUserRepository.save(entity);
         return mapper.toDomain(savedEntity);
     }
 
     @Override
-    public Optional<User> findById(UUID id) {
-        return springDataUserRepository.findById(id).map(mapper::toDomain);
+    public Optional<User> findById(UserId id) {
+        return springDataUserRepository.findById(id.value()).map(mapper::toDomain);
     }
 
     @Override
-    public Optional<User> findByEmail(String email) {
-        return springDataUserRepository.findByEmail(email.toLowerCase()).map(mapper::toDomain);
+    public Optional<User> findByEmail(Email email) {
+        return springDataUserRepository.findByEmail(email.value()).map(mapper::toDomain);
     }
 
     @Override
-    public boolean existsByEmail(String email) {
-        return springDataUserRepository.existsByEmail(email.toLowerCase());
+    public boolean existsByEmail(Email email) {
+        return springDataUserRepository.existsByEmail(email.value());
     }
 
     @Override
-    public void deleteById(UUID id) {
-        springDataUserRepository.deleteById(id);
+    public void delete(User user) {
+        springDataUserRepository.deleteById(user.getId().value());
     }
 
     @Override
-    public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-        return springDataUserRepository.findByEmail(email.toLowerCase())
-                .map(user -> org.springframework.security.core.userdetails.User.builder().username(user.getEmail())
-                        .password(user.getPassword()).roles("USER").build())
-                .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
+    public boolean existsById(UserId id) {
+        return springDataUserRepository.existsById(id.value());
     }
 }

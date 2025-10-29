@@ -1,11 +1,10 @@
 package com.payhint.api.domain.crm.model;
 
 import java.time.LocalDateTime;
-import java.util.UUID;
 
 import com.payhint.api.domain.crm.valueobjects.Email;
+import com.payhint.api.domain.crm.valueobjects.UserId;
 
-import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -15,13 +14,10 @@ import lombok.Getter;
 @Builder
 public class User {
 
-    private UUID id;
+    private UserId id;
     private Email email;
-    @NotBlank
     private String password;
-    @NotBlank
     private String firstName;
-    @NotBlank
     private String lastName;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
@@ -32,8 +28,8 @@ public class User {
         this.password = password;
         this.firstName = firstName;
         this.lastName = lastName;
-        this.createdAt = null;
-        this.updatedAt = null;
+        this.createdAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
     }
 
     public void setPassword(String password) {

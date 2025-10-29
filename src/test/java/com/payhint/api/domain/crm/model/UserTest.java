@@ -1,20 +1,23 @@
 package com.payhint.api.domain.crm.model;
 
-import com.payhint.api.domain.crm.valueobjects.Email;
-import jakarta.validation.ConstraintViolation;
-import jakarta.validation.Validation;
-import jakarta.validation.Validator;
-import jakarta.validation.ValidatorFactory;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.Test;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.LocalDateTime;
 import java.util.Set;
 import java.util.UUID;
 
-import static org.assertj.core.api.Assertions.*;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+
+import com.payhint.api.domain.crm.valueobjects.Email;
+import com.payhint.api.domain.crm.valueobjects.UserId;
+
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.Validation;
+import jakarta.validation.Validator;
+import jakarta.validation.ValidatorFactory;
 
 @DisplayName("User Domain Model Tests")
 class UserTest {
@@ -51,8 +54,8 @@ class UserTest {
             assertThat(user.getPassword()).isEqualTo(VALID_PASSWORD);
             assertThat(user.getFirstName()).isEqualTo(VALID_FIRST_NAME);
             assertThat(user.getLastName()).isEqualTo(VALID_LAST_NAME);
-            assertThat(user.getCreatedAt()).isNull();
-            assertThat(user.getUpdatedAt()).isNull();
+            assertThat(user.getCreatedAt()).isNotNull();
+            assertThat(user.getUpdatedAt()).isAfterOrEqualTo(user.getCreatedAt());
 
             Set<ConstraintViolation<User>> violations = validator.validate(user);
             assertThat(violations).isEmpty();
@@ -61,7 +64,7 @@ class UserTest {
         @Test
         @DisplayName("Should create user with all fields using builder")
         void shouldCreateUserUsingBuilder() {
-            UUID id = UUID.randomUUID();
+            UserId id = new UserId(UUID.randomUUID());
             Email email = new Email(VALID_EMAIL);
             LocalDateTime now = LocalDateTime.now();
 
@@ -79,110 +82,6 @@ class UserTest {
 
             Set<ConstraintViolation<User>> violations = validator.validate(user);
             assertThat(violations).isEmpty();
-        }
-
-        @Test
-        @DisplayName("Should fail validation when password is null")
-        void shouldFailValidationWhenPasswordIsNull() {
-            Email email = new Email(VALID_EMAIL);
-
-            User user = User.builder().email(email).password(null).firstName(VALID_FIRST_NAME).lastName(VALID_LAST_NAME)
-                    .build();
-
-            Set<ConstraintViolation<User>> violations = validator.validate(user);
-            assertThat(violations).hasSize(1);
-            assertThat(violations).extracting(v -> v.getPropertyPath().toString()).containsExactly("password");
-        }
-
-        @Test
-        @DisplayName("Should fail validation when password is empty")
-        void shouldFailValidationWhenPasswordIsEmpty() {
-            Email email = new Email(VALID_EMAIL);
-
-            User user = User.builder().email(email).password("").firstName(VALID_FIRST_NAME).lastName(VALID_LAST_NAME)
-                    .build();
-
-            Set<ConstraintViolation<User>> violations = validator.validate(user);
-            assertThat(violations).hasSize(1);
-            assertThat(violations).extracting(v -> v.getPropertyPath().toString()).containsExactly("password");
-        }
-
-        @Test
-        @DisplayName("Should fail validation when password is blank")
-        void shouldFailValidationWhenPasswordIsBlank() {
-            Email email = new Email(VALID_EMAIL);
-
-            User user = User.builder().email(email).password("   ").firstName(VALID_FIRST_NAME)
-                    .lastName(VALID_LAST_NAME).build();
-
-            Set<ConstraintViolation<User>> violations = validator.validate(user);
-            assertThat(violations).hasSize(1);
-            assertThat(violations).extracting(v -> v.getPropertyPath().toString()).containsExactly("password");
-        }
-
-        @Test
-        @DisplayName("Should fail validation when first name is null")
-        void shouldFailValidationWhenFirstNameIsNull() {
-            Email email = new Email(VALID_EMAIL);
-
-            User user = User.builder().email(email).password(VALID_PASSWORD).firstName(null).lastName(VALID_LAST_NAME)
-                    .build();
-
-            Set<ConstraintViolation<User>> violations = validator.validate(user);
-            assertThat(violations).hasSize(1);
-            assertThat(violations).extracting(v -> v.getPropertyPath().toString()).containsExactly("firstName");
-        }
-
-        @Test
-        @DisplayName("Should fail validation when first name is empty")
-        void shouldFailValidationWhenFirstNameIsEmpty() {
-            Email email = new Email(VALID_EMAIL);
-
-            User user = User.builder().email(email).password(VALID_PASSWORD).firstName("").lastName(VALID_LAST_NAME)
-                    .build();
-
-            Set<ConstraintViolation<User>> violations = validator.validate(user);
-            assertThat(violations).hasSize(1);
-            assertThat(violations).extracting(v -> v.getPropertyPath().toString()).containsExactly("firstName");
-        }
-
-        @Test
-        @DisplayName("Should fail validation when last name is null")
-        void shouldFailValidationWhenLastNameIsNull() {
-            Email email = new Email(VALID_EMAIL);
-
-            User user = User.builder().email(email).password(VALID_PASSWORD).firstName(VALID_FIRST_NAME).lastName(null)
-                    .build();
-
-            Set<ConstraintViolation<User>> violations = validator.validate(user);
-            assertThat(violations).hasSize(1);
-            assertThat(violations).extracting(v -> v.getPropertyPath().toString()).containsExactly("lastName");
-        }
-
-        @Test
-        @DisplayName("Should fail validation when last name is empty")
-        void shouldFailValidationWhenLastNameIsEmpty() {
-            Email email = new Email(VALID_EMAIL);
-
-            User user = User.builder().email(email).password(VALID_PASSWORD).firstName(VALID_FIRST_NAME).lastName("")
-                    .build();
-
-            Set<ConstraintViolation<User>> violations = validator.validate(user);
-            assertThat(violations).hasSize(1);
-            assertThat(violations).extracting(v -> v.getPropertyPath().toString()).containsExactly("lastName");
-        }
-
-        @Test
-        @DisplayName("Should fail validation with multiple constraint violations")
-        void shouldFailValidationWithMultipleViolations() {
-            Email email = new Email(VALID_EMAIL);
-
-            User user = User.builder().email(email).password("").firstName("").lastName("").build();
-
-            Set<ConstraintViolation<User>> violations = validator.validate(user);
-            assertThat(violations).hasSize(3);
-            assertThat(violations).extracting(ConstraintViolation::getPropertyPath).extracting(Object::toString)
-                    .containsExactlyInAnyOrder("password", "firstName", "lastName");
         }
     }
 
@@ -203,45 +102,6 @@ class UserTest {
 
             Set<ConstraintViolation<User>> violations = validator.validate(user);
             assertThat(violations).isEmpty();
-        }
-
-        @Test
-        @DisplayName("Should fail validation after setting password to null")
-        void shouldFailValidationAfterSettingPasswordToNull() {
-            Email email = new Email(VALID_EMAIL);
-            User user = new User(email, VALID_PASSWORD, VALID_FIRST_NAME, VALID_LAST_NAME);
-
-            user.setPassword(null);
-
-            Set<ConstraintViolation<User>> violations = validator.validate(user);
-            assertThat(violations).hasSize(1);
-            assertThat(violations).extracting(v -> v.getPropertyPath().toString()).containsExactly("password");
-        }
-
-        @Test
-        @DisplayName("Should fail validation after setting password to empty string")
-        void shouldFailValidationAfterSettingPasswordToEmpty() {
-            Email email = new Email(VALID_EMAIL);
-            User user = new User(email, VALID_PASSWORD, VALID_FIRST_NAME, VALID_LAST_NAME);
-
-            user.setPassword("");
-
-            Set<ConstraintViolation<User>> violations = validator.validate(user);
-            assertThat(violations).hasSize(1);
-            assertThat(violations).extracting(v -> v.getPropertyPath().toString()).containsExactly("password");
-        }
-
-        @Test
-        @DisplayName("Should fail validation after setting password to blank string")
-        void shouldFailValidationAfterSettingPasswordToBlank() {
-            Email email = new Email(VALID_EMAIL);
-            User user = new User(email, VALID_PASSWORD, VALID_FIRST_NAME, VALID_LAST_NAME);
-
-            user.setPassword("   ");
-
-            Set<ConstraintViolation<User>> violations = validator.validate(user);
-            assertThat(violations).hasSize(1);
-            assertThat(violations).extracting(v -> v.getPropertyPath().toString()).containsExactly("password");
         }
     }
 
@@ -302,58 +162,6 @@ class UserTest {
         }
 
         @Test
-        @DisplayName("Should fail validation when updating profile with null first name")
-        void shouldFailValidationWithNullFirstName() {
-            Email email = new Email(VALID_EMAIL);
-            User user = new User(email, VALID_PASSWORD, VALID_FIRST_NAME, VALID_LAST_NAME);
-
-            user.updateProfile(null, UPDATED_LAST_NAME);
-
-            Set<ConstraintViolation<User>> violations = validator.validate(user);
-            assertThat(violations).hasSize(1);
-            assertThat(violations).extracting(v -> v.getPropertyPath().toString()).containsExactly("firstName");
-        }
-
-        @Test
-        @DisplayName("Should fail validation when updating profile with null last name")
-        void shouldFailValidationWithNullLastName() {
-            Email email = new Email(VALID_EMAIL);
-            User user = new User(email, VALID_PASSWORD, VALID_FIRST_NAME, VALID_LAST_NAME);
-
-            user.updateProfile(UPDATED_FIRST_NAME, null);
-
-            Set<ConstraintViolation<User>> violations = validator.validate(user);
-            assertThat(violations).hasSize(1);
-            assertThat(violations).extracting(v -> v.getPropertyPath().toString()).containsExactly("lastName");
-        }
-
-        @Test
-        @DisplayName("Should fail validation when updating profile with empty first name")
-        void shouldFailValidationWithEmptyFirstName() {
-            Email email = new Email(VALID_EMAIL);
-            User user = new User(email, VALID_PASSWORD, VALID_FIRST_NAME, VALID_LAST_NAME);
-
-            user.updateProfile("", UPDATED_LAST_NAME);
-
-            Set<ConstraintViolation<User>> violations = validator.validate(user);
-            assertThat(violations).hasSize(1);
-            assertThat(violations).extracting(v -> v.getPropertyPath().toString()).containsExactly("firstName");
-        }
-
-        @Test
-        @DisplayName("Should fail validation when updating profile with empty last name")
-        void shouldFailValidationWithEmptyLastName() {
-            Email email = new Email(VALID_EMAIL);
-            User user = new User(email, VALID_PASSWORD, VALID_FIRST_NAME, VALID_LAST_NAME);
-
-            user.updateProfile(UPDATED_FIRST_NAME, "");
-
-            Set<ConstraintViolation<User>> violations = validator.validate(user);
-            assertThat(violations).hasSize(1);
-            assertThat(violations).extracting(v -> v.getPropertyPath().toString()).containsExactly("lastName");
-        }
-
-        @Test
         @DisplayName("Should update profile with same values")
         void shouldUpdateProfileWithSameValues() {
             Email email = new Email(VALID_EMAIL);
@@ -396,6 +204,16 @@ class UserTest {
 
             assertThat(user.getEmail().value()).isEqualTo(emailWithPlus);
         }
+
+        @Test
+        @DisplayName("Should save email in lowercase")
+        void shouldSaveEmailInLowercase() {
+            Email email = new Email(VALID_EMAIL.toUpperCase());
+
+            User user = new User(email, VALID_PASSWORD, VALID_FIRST_NAME, VALID_LAST_NAME);
+
+            assertThat(user.getEmail().value()).isEqualTo(VALID_EMAIL);
+        }
     }
 
     @Nested
@@ -436,7 +254,7 @@ class UserTest {
         @Test
         @DisplayName("Should maintain all properties after profile update")
         void shouldMaintainAllPropertiesAfterProfileUpdate() {
-            UUID id = UUID.randomUUID();
+            UserId id = new UserId(UUID.randomUUID());
             Email email = new Email(VALID_EMAIL);
             LocalDateTime createdAt = LocalDateTime.now().minusDays(1);
 
@@ -458,7 +276,7 @@ class UserTest {
         @Test
         @DisplayName("Should maintain all properties after password change")
         void shouldMaintainAllPropertiesAfterPasswordChange() {
-            UUID id = UUID.randomUUID();
+            UserId id = new UserId(UUID.randomUUID());
             Email email = new Email(VALID_EMAIL);
             LocalDateTime createdAt = LocalDateTime.now().minusDays(1);
             LocalDateTime updatedAt = LocalDateTime.now().minusHours(1);
