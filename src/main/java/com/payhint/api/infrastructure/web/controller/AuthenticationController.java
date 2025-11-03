@@ -11,7 +11,7 @@ import com.payhint.api.application.crm.dto.request.LoginUserRequest;
 import com.payhint.api.application.crm.dto.request.RegisterUserRequest;
 import com.payhint.api.application.crm.dto.response.LoginResponse;
 import com.payhint.api.application.crm.dto.response.UserResponse;
-import com.payhint.api.application.crm.port.in.AuthenticationUseCase;
+import com.payhint.api.application.crm.usecases.AuthenticationUseCase;
 
 import jakarta.validation.Valid;
 

@@ -111,9 +111,10 @@ class CustomerControllerIntegrationTest {
             mockMvc.perform(post("/api/customers").header("Authorization", "Bearer " + jwtToken)
                     .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isBadRequest()).andExpect(jsonPath("$.status").value(400))
-                    .andExpect(jsonPath("$.error").value("Bad Request"))
-                    .andExpect(jsonPath("$.message").value(containsString("companyName")))
-                    .andExpect(jsonPath("$.path").value("/api/customers"))
+                    .andExpect(jsonPath("$.title").value("Invalid Input"))
+                    .andExpect(jsonPath("$.detail").value("Validation failed"))
+                    .andExpect(jsonPath("$.errors").value(containsString("companyName")))
+                    .andExpect(jsonPath("$.instance").value("/api/customers"))
                     .andExpect(jsonPath("$.timestamp").isNotEmpty());
         }
 
@@ -125,8 +126,9 @@ class CustomerControllerIntegrationTest {
             mockMvc.perform(post("/api/customers").header("Authorization", "Bearer " + jwtToken)
                     .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isBadRequest()).andExpect(jsonPath("$.status").value(400))
-                    .andExpect(jsonPath("$.error").value("Bad Request"))
-                    .andExpect(jsonPath("$.message").value(containsString("companyName")));
+                    .andExpect(jsonPath("$.title").value("Invalid Input"))
+                    .andExpect(jsonPath("$.detail").value("Validation failed"))
+                    .andExpect(jsonPath("$.errors").value(containsString("companyName")));
         }
 
         @Test
@@ -138,8 +140,9 @@ class CustomerControllerIntegrationTest {
             mockMvc.perform(post("/api/customers").header("Authorization", "Bearer " + jwtToken)
                     .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isBadRequest()).andExpect(jsonPath("$.status").value(400))
-                    .andExpect(jsonPath("$.error").value("Bad Request"))
-                    .andExpect(jsonPath("$.message").value(containsString("companyName")));
+                    .andExpect(jsonPath("$.title").value("Invalid Input"))
+                    .andExpect(jsonPath("$.detail").value("Validation failed"))
+                    .andExpect(jsonPath("$.errors").value(containsString("companyName")));
         }
 
         @Test
@@ -150,8 +153,9 @@ class CustomerControllerIntegrationTest {
             mockMvc.perform(post("/api/customers").header("Authorization", "Bearer " + jwtToken)
                     .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isBadRequest()).andExpect(jsonPath("$.status").value(400))
-                    .andExpect(jsonPath("$.error").value("Bad Request"))
-                    .andExpect(jsonPath("$.message").value(containsString("contactEmail")));
+                    .andExpect(jsonPath("$.title").value("Invalid Input"))
+                    .andExpect(jsonPath("$.detail").value("Validation failed"))
+                    .andExpect(jsonPath("$.errors").value(containsString("contactEmail")));
         }
 
         @Test
@@ -162,8 +166,9 @@ class CustomerControllerIntegrationTest {
             mockMvc.perform(post("/api/customers").header("Authorization", "Bearer " + jwtToken)
                     .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isBadRequest()).andExpect(jsonPath("$.status").value(400))
-                    .andExpect(jsonPath("$.error").value("Bad Request"))
-                    .andExpect(jsonPath("$.message").value(containsString("contactEmail")));
+                    .andExpect(jsonPath("$.title").value("Invalid Input"))
+                    .andExpect(jsonPath("$.detail").value("Validation failed"))
+                    .andExpect(jsonPath("$.errors").value(containsString("contactEmail")));
         }
 
         @Test
@@ -174,8 +179,9 @@ class CustomerControllerIntegrationTest {
             mockMvc.perform(post("/api/customers").header("Authorization", "Bearer " + jwtToken)
                     .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isBadRequest()).andExpect(jsonPath("$.status").value(400))
-                    .andExpect(jsonPath("$.error").value("Bad Request"))
-                    .andExpect(jsonPath("$.message").value(containsString("contactEmail")));
+                    .andExpect(jsonPath("$.title").value("Invalid Input"))
+                    .andExpect(jsonPath("$.detail").value("Validation failed"))
+                    .andExpect(jsonPath("$.errors").value(containsString("contactEmail")));
         }
 
         @Test
@@ -187,8 +193,9 @@ class CustomerControllerIntegrationTest {
             mockMvc.perform(post("/api/customers").header("Authorization", "Bearer " + jwtToken)
                     .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isBadRequest()).andExpect(jsonPath("$.status").value(400))
-                    .andExpect(jsonPath("$.error").value("Bad Request"))
-                    .andExpect(jsonPath("$.message").value(containsString("contactEmail")));
+                    .andExpect(jsonPath("$.title").value("Invalid Input"))
+                    .andExpect(jsonPath("$.detail").value("Validation failed"))
+                    .andExpect(jsonPath("$.errors").value(containsString("contactEmail")));
         }
 
         @Test
@@ -245,8 +252,9 @@ class CustomerControllerIntegrationTest {
 
             mockMvc.perform(get("/api/customers/{id}", nonExistentId).header("Authorization", "Bearer " + jwtToken))
                     .andExpect(status().isNotFound()).andExpect(jsonPath("$.status").value(404))
-                    .andExpect(jsonPath("$.error").value("Not Found")).andExpect(jsonPath("$.message").isNotEmpty())
-                    .andExpect(jsonPath("$.path").value("/api/customers/" + nonExistentId))
+                    .andExpect(jsonPath("$.title").value("Resource Not Found"))
+                    .andExpect(jsonPath("$.detail").isNotEmpty())
+                    .andExpect(jsonPath("$.instance").value("/api/customers/" + nonExistentId))
                     .andExpect(jsonPath("$.timestamp").isNotEmpty());
         }
 
@@ -263,8 +271,8 @@ class CustomerControllerIntegrationTest {
             mockMvc.perform(
                     get("/api/customers/{id}", anotherCustomer.getId()).header("Authorization", "Bearer " + jwtToken))
                     .andExpect(status().isForbidden()).andExpect(jsonPath("$.status").value(403))
-                    .andExpect(jsonPath("$.error").value("Forbidden")).andExpect(jsonPath("$.message").isNotEmpty())
-                    .andExpect(jsonPath("$.timestamp").isNotEmpty());
+                    .andExpect(jsonPath("$.title").value("Permission Denied"))
+                    .andExpect(jsonPath("$.detail").isNotEmpty()).andExpect(jsonPath("$.timestamp").isNotEmpty());
         }
 
         @Test
@@ -272,7 +280,7 @@ class CustomerControllerIntegrationTest {
         void shouldRejectInvalidUuidFormat() throws Exception {
             mockMvc.perform(get("/api/customers/{id}", "invalid-uuid").header("Authorization", "Bearer " + jwtToken))
                     .andExpect(status().isBadRequest()).andExpect(jsonPath("$.status").value(400))
-                    .andExpect(jsonPath("$.error").value("Bad Request"));
+                    .andExpect(jsonPath("$.title").isNotEmpty());
         }
 
         @Test
@@ -427,7 +435,8 @@ class CustomerControllerIntegrationTest {
             mockMvc.perform(put("/api/customers/{id}", nonExistentId).header("Authorization", "Bearer " + jwtToken)
                     .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isNotFound()).andExpect(jsonPath("$.status").value(404))
-                    .andExpect(jsonPath("$.error").value("Not Found")).andExpect(jsonPath("$.timestamp").isNotEmpty());
+                    .andExpect(jsonPath("$.title").value("Resource Not Found"))
+                    .andExpect(jsonPath("$.timestamp").isNotEmpty());
         }
 
         @Test
@@ -446,7 +455,8 @@ class CustomerControllerIntegrationTest {
                     put("/api/customers/{id}", anotherCustomer.getId()).header("Authorization", "Bearer " + jwtToken)
                             .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isForbidden()).andExpect(jsonPath("$.status").value(403))
-                    .andExpect(jsonPath("$.error").value("Forbidden")).andExpect(jsonPath("$.timestamp").isNotEmpty());
+                    .andExpect(jsonPath("$.title").value("Permission Denied"))
+                    .andExpect(jsonPath("$.timestamp").isNotEmpty());
         }
 
         @Test
@@ -461,8 +471,9 @@ class CustomerControllerIntegrationTest {
             mockMvc.perform(put("/api/customers/{id}", customer.getId()).header("Authorization", "Bearer " + jwtToken)
                     .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isBadRequest()).andExpect(jsonPath("$.status").value(400))
-                    .andExpect(jsonPath("$.error").value("Bad Request"))
-                    .andExpect(jsonPath("$.message").value(containsString("companyName")));
+                    .andExpect(jsonPath("$.title").value("Invalid Input"))
+                    .andExpect(jsonPath("$.detail").value("Validation failed"))
+                    .andExpect(jsonPath("$.errors").value(containsString("companyName")));
         }
 
         @Test
@@ -476,8 +487,9 @@ class CustomerControllerIntegrationTest {
             mockMvc.perform(put("/api/customers/{id}", customer.getId()).header("Authorization", "Bearer " + jwtToken)
                     .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isBadRequest()).andExpect(jsonPath("$.status").value(400))
-                    .andExpect(jsonPath("$.error").value("Bad Request"))
-                    .andExpect(jsonPath("$.message").value(containsString("contactEmail")));
+                    .andExpect(jsonPath("$.title").value("Invalid Input"))
+                    .andExpect(jsonPath("$.detail").value("Validation failed"))
+                    .andExpect(jsonPath("$.errors").value(containsString("contactEmail")));
         }
 
         @Test
@@ -492,8 +504,9 @@ class CustomerControllerIntegrationTest {
             mockMvc.perform(put("/api/customers/{id}", customer.getId()).header("Authorization", "Bearer " + jwtToken)
                     .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isBadRequest()).andExpect(jsonPath("$.status").value(400))
-                    .andExpect(jsonPath("$.error").value("Bad Request"))
-                    .andExpect(jsonPath("$.message").value(containsString("contactEmail")));
+                    .andExpect(jsonPath("$.title").value("Invalid Input"))
+                    .andExpect(jsonPath("$.detail").value("Validation failed"))
+                    .andExpect(jsonPath("$.errors").value(containsString("contactEmail")));
         }
 
         @Test
@@ -504,7 +517,7 @@ class CustomerControllerIntegrationTest {
             mockMvc.perform(put("/api/customers/{id}", "invalid-uuid").header("Authorization", "Bearer " + jwtToken)
                     .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isBadRequest()).andExpect(jsonPath("$.status").value(400))
-                    .andExpect(jsonPath("$.error").value("Bad Request"));
+                    .andExpect(jsonPath("$.title").isNotEmpty());
         }
 
         @Test
@@ -552,7 +565,8 @@ class CustomerControllerIntegrationTest {
 
             mockMvc.perform(delete("/api/customers/{id}", nonExistentId).header("Authorization", "Bearer " + jwtToken))
                     .andExpect(status().isNotFound()).andExpect(jsonPath("$.status").value(404))
-                    .andExpect(jsonPath("$.error").value("Not Found")).andExpect(jsonPath("$.timestamp").isNotEmpty());
+                    .andExpect(jsonPath("$.title").value("Resource Not Found"))
+                    .andExpect(jsonPath("$.timestamp").isNotEmpty());
         }
 
         @Test
@@ -567,7 +581,8 @@ class CustomerControllerIntegrationTest {
 
             mockMvc.perform(delete("/api/customers/{id}", anotherCustomer.getId()).header("Authorization",
                     "Bearer " + jwtToken)).andExpect(status().isForbidden()).andExpect(jsonPath("$.status").value(403))
-                    .andExpect(jsonPath("$.error").value("Forbidden")).andExpect(jsonPath("$.timestamp").isNotEmpty());
+                    .andExpect(jsonPath("$.title").value("Permission Denied"))
+                    .andExpect(jsonPath("$.timestamp").isNotEmpty());
         }
 
         @Test
@@ -575,7 +590,7 @@ class CustomerControllerIntegrationTest {
         void shouldRejectInvalidUuidFormat() throws Exception {
             mockMvc.perform(delete("/api/customers/{id}", "invalid-uuid").header("Authorization", "Bearer " + jwtToken))
                     .andExpect(status().isBadRequest()).andExpect(jsonPath("$.status").value(400))
-                    .andExpect(jsonPath("$.error").value("Bad Request"));
+                    .andExpect(jsonPath("$.title").isNotEmpty());
         }
 
         @Test

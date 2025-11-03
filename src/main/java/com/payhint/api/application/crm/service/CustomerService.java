@@ -9,8 +9,8 @@ import com.payhint.api.application.crm.dto.request.CreateCustomerRequest;
 import com.payhint.api.application.crm.dto.request.UpdateCustomerRequest;
 import com.payhint.api.application.crm.dto.response.CustomerResponse;
 import com.payhint.api.application.crm.mapper.CustomerMapper;
-import com.payhint.api.application.crm.port.in.CustomerManagementUseCase;
-import com.payhint.api.application.shared.exceptions.AlreadyExistException;
+import com.payhint.api.application.crm.usecases.CustomerManagementUseCase;
+import com.payhint.api.application.shared.exceptions.AlreadyExistsException;
 import com.payhint.api.application.shared.exceptions.NotFoundException;
 import com.payhint.api.application.shared.exceptions.PermissionDeniedException;
 import com.payhint.api.domain.crm.model.Customer;
@@ -55,7 +55,7 @@ public class CustomerService implements CustomerManagementUseCase {
             throw new NotFoundException("User does not exist.");
         }
         if (customerRepository.existsByUserIdAndCompanyName(userId, request.companyName())) {
-            throw new AlreadyExistException("A customer with the same company name already exists for this user.");
+            throw new AlreadyExistsException("A customer with the same company name already exists for this user.");
         }
 
         Customer customer = customerMapper.toDomain(userId, request);

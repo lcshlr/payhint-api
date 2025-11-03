@@ -5,6 +5,7 @@ import java.time.LocalDateTime;
 import com.payhint.api.domain.crm.valueobjects.CustomerId;
 import com.payhint.api.domain.crm.valueobjects.Email;
 import com.payhint.api.domain.crm.valueobjects.UserId;
+import com.payhint.api.domain.shared.exception.InvalidPropertyException;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -22,6 +23,15 @@ public class Customer {
     private LocalDateTime updatedAt;
 
     public Customer(UserId userId, String companyName, Email contactEmail) {
+        if (userId == null) {
+            throw new InvalidPropertyException("UserId cannot be null");
+        }
+        if (companyName == null || companyName.isBlank()) {
+            throw new InvalidPropertyException("Company name cannot be null or empty");
+        }
+        if (contactEmail == null) {
+            throw new InvalidPropertyException("Contact email cannot be null");
+        }
         this.id = null;
         this.userId = userId;
         this.companyName = companyName;
@@ -31,21 +41,26 @@ public class Customer {
     }
 
     public void updateInformation(String companyName, Email contactEmail) {
+        boolean isUpdated = false;
+
+        if (companyName != null && companyName.isBlank()) {
+            throw new InvalidPropertyException("Company name cannot be empty");
+        }
+
         if (companyName != null) {
             this.companyName = companyName;
+            isUpdated = true;
         }
-        if (contactEmail != null && contactEmail.value() != null) {
+        if (contactEmail != null) {
             this.contactEmail = contactEmail;
+            isUpdated = true;
         }
-        if (companyName != null || contactEmail != null) {
+        if (isUpdated) {
             this.updatedAt = LocalDateTime.now();
         }
     }
 
     public boolean belongsToUser(UserId userId) {
-        if (this.userId == null || userId == null) {
-            return false;
-        }
-        return this.userId.equals(userId);
+        return this.userId != null && this.userId.equals(userId);
     }
 }

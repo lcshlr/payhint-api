@@ -18,7 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.payhint.api.application.crm.dto.request.CreateCustomerRequest;
 import com.payhint.api.application.crm.dto.request.UpdateCustomerRequest;
 import com.payhint.api.application.crm.dto.response.CustomerResponse;
-import com.payhint.api.application.shared.exceptions.AlreadyExistException;
+import com.payhint.api.application.shared.exceptions.AlreadyExistsException;
 import com.payhint.api.application.shared.exceptions.NotFoundException;
 import com.payhint.api.application.shared.exceptions.PermissionDeniedException;
 import com.payhint.api.domain.crm.model.Customer;
@@ -104,15 +104,15 @@ class CustomerServiceIntegrationTest {
         }
 
         @Test
-        @DisplayName("Should throw AlreadyExistException when duplicate company name for same user")
-        void shouldThrowAlreadyExistExceptionWhenDuplicateCompanyName() {
+        @DisplayName("Should throw AlreadyExistsException when duplicate company name for same user")
+        void shouldThrowAlreadyExistsExceptionWhenDuplicateCompanyName() {
             CreateCustomerRequest request = new CreateCustomerRequest(TEST_COMPANY_NAME, TEST_CONTACT_EMAIL);
             customerService.createCustomer(testUserId, request);
 
             CreateCustomerRequest duplicateRequest = new CreateCustomerRequest(TEST_COMPANY_NAME, "another@email.com");
 
             assertThatThrownBy(() -> customerService.createCustomer(testUserId, duplicateRequest))
-                    .isInstanceOf(AlreadyExistException.class)
+                    .isInstanceOf(AlreadyExistsException.class)
                     .hasMessageContaining("A customer with the same company name already exists for this user.");
         }
 

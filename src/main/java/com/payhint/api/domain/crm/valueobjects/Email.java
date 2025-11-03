@@ -1,36 +1,27 @@
 package com.payhint.api.domain.crm.valueobjects;
 
-public class Email {
-    private String value;
+import java.util.regex.Pattern;
 
-    public Email(String value) {
-        if (value == null) {
-            throw new IllegalArgumentException("Email cannot be null");
+import com.payhint.api.domain.shared.exception.InvalidPropertyException;
+
+public record Email(String value) {
+
+    private static final Pattern EMAIL_PATTERN = Pattern
+            .compile("^[A-Za-z0-9+_-]+(\\.[A-Za-z0-9+_-]+)*@[A-Za-z0-9-]+(\\.[A-Za-z0-9-]+)*\\.[A-Za-z]{2,}$");
+
+    public Email {
+        if (value == null || value.isBlank()) {
+            throw new InvalidPropertyException("Email cannot be null or empty");
         }
-        this.value = value.toLowerCase();
-    }
-
-    public String value() {
-        return value;
+        String normalized = value.toLowerCase().trim();
+        if (!EMAIL_PATTERN.matcher(normalized).matches()) {
+            throw new InvalidPropertyException("Invalid email format: " + value);
+        }
+        value = normalized;
     }
 
     @Override
     public String toString() {
-        return value.toLowerCase();
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o)
-            return true;
-        if (o == null || getClass() != o.getClass())
-            return false;
-        Email email = (Email) o;
-        return value != null ? value.equals(email.value) : email.value == null;
-    }
-
-    @Override
-    public int hashCode() {
-        return value != null ? value.hashCode() : 0;
+        return value;
     }
 }

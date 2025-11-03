@@ -1,4 +1,4 @@
-package com.payhint.api.application.crm.port.in;
+package com.payhint.api.application.crm.usecases;
 
 import com.payhint.api.application.crm.dto.request.LoginUserRequest;
 import com.payhint.api.application.crm.dto.request.RegisterUserRequest;

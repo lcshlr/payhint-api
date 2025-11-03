@@ -20,7 +20,7 @@ import com.payhint.api.application.crm.dto.request.LoginUserRequest;
 import com.payhint.api.application.crm.dto.request.RegisterUserRequest;
 import com.payhint.api.application.crm.dto.response.LoginResponse;
 import com.payhint.api.application.crm.dto.response.UserResponse;
-import com.payhint.api.application.shared.exceptions.AlreadyExistException;
+import com.payhint.api.application.shared.exceptions.AlreadyExistsException;
 import com.payhint.api.domain.crm.model.User;
 import com.payhint.api.domain.crm.repository.UserRepository;
 import com.payhint.api.domain.crm.valueobjects.Email;
@@ -109,7 +109,7 @@ class AuthenticationServiceIntegrationTest {
                     "User");
 
             assertThatThrownBy(() -> authenticationService.register(duplicateRequest))
-                    .isInstanceOf(AlreadyExistException.class)
+                    .isInstanceOf(AlreadyExistsException.class)
                     .hasMessageContaining("User with email " + TEST_EMAIL + " already exists.");
         }
 
@@ -122,7 +122,7 @@ class AuthenticationServiceIntegrationTest {
                     "AnotherPassword123!", "Another", "User");
 
             assertThatThrownBy(() -> authenticationService.register(duplicateRequest))
-                    .isInstanceOf(AlreadyExistException.class).hasMessageContaining("already exists");
+                    .isInstanceOf(AlreadyExistsException.class).hasMessageContaining("already exists");
         }
 
         @Test
@@ -541,7 +541,7 @@ class AuthenticationServiceIntegrationTest {
                     "DifferentPass123!", "Second", "Attempt");
 
             assertThatThrownBy(() -> authenticationService.register(secondRequest))
-                    .isInstanceOf(AlreadyExistException.class).hasMessageContaining("already exists");
+                    .isInstanceOf(AlreadyExistsException.class).hasMessageContaining("already exists");
         }
 
         @Test

@@ -96,7 +96,7 @@ class UserTest {
             User user = new User(email, VALID_PASSWORD, VALID_FIRST_NAME, VALID_LAST_NAME);
             String newPassword = "newSecurePassword456";
 
-            user.setPassword(newPassword);
+            user.changePassword(newPassword);
 
             assertThat(user.getPassword()).isEqualTo(newPassword);
 
@@ -116,7 +116,7 @@ class UserTest {
             User user = new User(email, VALID_PASSWORD, VALID_FIRST_NAME, VALID_LAST_NAME);
             LocalDateTime beforeUpdate = LocalDateTime.now();
 
-            user.updateProfile(UPDATED_FIRST_NAME, UPDATED_LAST_NAME);
+            user.updateProfile(null, UPDATED_FIRST_NAME, UPDATED_LAST_NAME);
 
             assertThat(user.getFirstName()).isEqualTo(UPDATED_FIRST_NAME);
             assertThat(user.getLastName()).isEqualTo(UPDATED_LAST_NAME);
@@ -135,7 +135,7 @@ class UserTest {
                     .lastName(VALID_LAST_NAME).createdAt(LocalDateTime.now().minusDays(5)).updatedAt(null).build();
 
             LocalDateTime beforeUpdate = LocalDateTime.now();
-            user.updateProfile(UPDATED_FIRST_NAME, UPDATED_LAST_NAME);
+            user.updateProfile(null, UPDATED_FIRST_NAME, UPDATED_LAST_NAME);
             LocalDateTime afterUpdate = LocalDateTime.now();
 
             assertThat(user.getUpdatedAt()).isNotNull();
@@ -148,12 +148,12 @@ class UserTest {
             Email email = new Email(VALID_EMAIL);
             User user = new User(email, VALID_PASSWORD, VALID_FIRST_NAME, VALID_LAST_NAME);
 
-            user.updateProfile("FirstUpdate", "LastUpdate1");
+            user.updateProfile(null, "FirstUpdate", "LastUpdate1");
             LocalDateTime firstUpdate = user.getUpdatedAt();
 
             Thread.sleep(10);
 
-            user.updateProfile("SecondUpdate", "LastUpdate2");
+            user.updateProfile(null, "SecondUpdate", "LastUpdate2");
             LocalDateTime secondUpdate = user.getUpdatedAt();
 
             assertThat(user.getFirstName()).isEqualTo("SecondUpdate");
@@ -167,7 +167,7 @@ class UserTest {
             Email email = new Email(VALID_EMAIL);
             User user = new User(email, VALID_PASSWORD, VALID_FIRST_NAME, VALID_LAST_NAME);
 
-            user.updateProfile(VALID_FIRST_NAME, VALID_LAST_NAME);
+            user.updateProfile(null, VALID_FIRST_NAME, VALID_LAST_NAME);
 
             assertThat(user.getFirstName()).isEqualTo(VALID_FIRST_NAME);
             assertThat(user.getLastName()).isEqualTo(VALID_LAST_NAME);
@@ -176,43 +176,48 @@ class UserTest {
             Set<ConstraintViolation<User>> violations = validator.validate(user);
             assertThat(violations).isEmpty();
         }
-    }
-
-    @Nested
-    @DisplayName("Email Value Object Integration Tests")
-    class EmailIntegrationTests {
 
         @Test
-        @DisplayName("Should maintain email immutability")
-        void shouldMaintainEmailImmutability() {
-            Email originalEmail = new Email(VALID_EMAIL);
-            User user = new User(originalEmail, VALID_PASSWORD, VALID_FIRST_NAME, VALID_LAST_NAME);
+        @DisplayName("Should update email when provided")
+        void shouldUpdateEmailWhenProvided() {
+            Email email = new Email(VALID_EMAIL);
+            User user = new User(email, VALID_PASSWORD, VALID_FIRST_NAME, VALID_LAST_NAME);
+            Email newEmail = new Email("new.email@example.com");
 
-            Email retrievedEmail = user.getEmail();
+            user.updateProfile(newEmail, null, null);
 
-            assertThat(retrievedEmail).isEqualTo(originalEmail);
-            assertThat(retrievedEmail.value()).isEqualTo(VALID_EMAIL);
+            assertThat(user.getEmail()).isEqualTo(newEmail);
+            assertThat(user.getFirstName()).isEqualTo(VALID_FIRST_NAME);
+            assertThat(user.getLastName()).isEqualTo(VALID_LAST_NAME);
         }
 
         @Test
-        @DisplayName("Should handle different email formats")
-        void shouldHandleDifferentEmailFormats() {
-            String emailWithPlus = "john.doe+test@example.com";
-            Email email = new Email(emailWithPlus);
-
+        @DisplayName("Should update all profile fields when all provided")
+        void shouldUpdateAllProfileFieldsWhenAllProvided() {
+            Email email = new Email(VALID_EMAIL);
             User user = new User(email, VALID_PASSWORD, VALID_FIRST_NAME, VALID_LAST_NAME);
+            Email newEmail = new Email("updated.email@example.com");
 
-            assertThat(user.getEmail().value()).isEqualTo(emailWithPlus);
+            user.updateProfile(newEmail, UPDATED_FIRST_NAME, UPDATED_LAST_NAME);
+
+            assertThat(user.getEmail()).isEqualTo(newEmail);
+            assertThat(user.getFirstName()).isEqualTo(UPDATED_FIRST_NAME);
+            assertThat(user.getLastName()).isEqualTo(UPDATED_LAST_NAME);
         }
 
         @Test
-        @DisplayName("Should save email in lowercase")
-        void shouldSaveEmailInLowercase() {
-            Email email = new Email(VALID_EMAIL.toUpperCase());
-
+        @DisplayName("Should not update profile when all values are null")
+        void shouldNotUpdateWhenAllValuesAreNull() {
+            Email email = new Email(VALID_EMAIL);
             User user = new User(email, VALID_PASSWORD, VALID_FIRST_NAME, VALID_LAST_NAME);
+            LocalDateTime originalUpdatedAt = user.getUpdatedAt();
 
-            assertThat(user.getEmail().value()).isEqualTo(VALID_EMAIL);
+            user.updateProfile(null, null, null);
+
+            assertThat(user.getEmail()).isEqualTo(email);
+            assertThat(user.getFirstName()).isEqualTo(VALID_FIRST_NAME);
+            assertThat(user.getLastName()).isEqualTo(VALID_LAST_NAME);
+            assertThat(user.getUpdatedAt()).isEqualTo(originalUpdatedAt);
         }
     }
 
@@ -228,20 +233,20 @@ class UserTest {
             User user = User.builder().email(email).password(VALID_PASSWORD).firstName(VALID_FIRST_NAME)
                     .lastName(VALID_LAST_NAME).createdAt(createdAt).build();
 
-            user.updateProfile(UPDATED_FIRST_NAME, UPDATED_LAST_NAME);
+            user.updateProfile(null, UPDATED_FIRST_NAME, UPDATED_LAST_NAME);
 
             assertThat(user.getCreatedAt()).isEqualTo(createdAt);
         }
 
         @Test
-        @DisplayName("Should not modify createdAt when setting password")
+        @DisplayName("Should not modify createdAt when changing password")
         void shouldNotModifyCreatedAtWhenSettingPassword() {
             LocalDateTime createdAt = LocalDateTime.now().minusDays(5);
             Email email = new Email(VALID_EMAIL);
             User user = User.builder().email(email).password(VALID_PASSWORD).firstName(VALID_FIRST_NAME)
                     .lastName(VALID_LAST_NAME).createdAt(createdAt).build();
 
-            user.setPassword("newPassword");
+            user.changePassword("newPassword");
 
             assertThat(user.getCreatedAt()).isEqualTo(createdAt);
         }
@@ -261,7 +266,7 @@ class UserTest {
             User user = User.builder().id(id).email(email).password(VALID_PASSWORD).firstName(VALID_FIRST_NAME)
                     .lastName(VALID_LAST_NAME).createdAt(createdAt).build();
 
-            user.updateProfile(UPDATED_FIRST_NAME, UPDATED_LAST_NAME);
+            user.updateProfile(null, UPDATED_FIRST_NAME, UPDATED_LAST_NAME);
 
             assertThat(user.getId()).isEqualTo(id);
             assertThat(user.getEmail()).isEqualTo(email);
@@ -286,7 +291,7 @@ class UserTest {
 
             String newPassword = "changedPassword";
 
-            user.setPassword(newPassword);
+            user.changePassword(newPassword);
 
             assertThat(user.getId()).isEqualTo(id);
             assertThat(user.getEmail()).isEqualTo(email);

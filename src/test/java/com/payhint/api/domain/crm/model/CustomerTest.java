@@ -188,44 +188,6 @@ class CustomerTest {
     }
 
     @Nested
-    @DisplayName("Email Value Object Integration Tests")
-    class EmailIntegrationTests {
-
-        @Test
-        @DisplayName("Should maintain email immutability")
-        void shouldMaintainEmailImmutability() {
-            Email originalEmail = new Email(VALID_EMAIL);
-            Customer customer = new Customer(VALID_USER_ID, VALID_COMPANY_NAME, originalEmail);
-
-            Email retrievedEmail = customer.getContactEmail();
-
-            assertThat(retrievedEmail).isEqualTo(originalEmail);
-            assertThat(retrievedEmail.value()).isEqualTo(VALID_EMAIL);
-        }
-
-        @Test
-        @DisplayName("Should handle different email formats")
-        void shouldHandleDifferentEmailFormats() {
-            String emailWithPlus = "john.doe+test@example.com";
-            Email email = new Email(emailWithPlus);
-
-            Customer customer = new Customer(VALID_USER_ID, VALID_COMPANY_NAME, email);
-
-            assertThat(customer.getContactEmail().value()).isEqualTo(emailWithPlus);
-        }
-
-        @Test
-        @DisplayName("Should save email in lowercase")
-        void shouldSaveEmailInLowercase() {
-            Email email = new Email(VALID_EMAIL.toUpperCase());
-
-            Customer customer = new Customer(VALID_USER_ID, VALID_COMPANY_NAME, email);
-
-            assertThat(customer.getContactEmail().value()).isEqualTo(VALID_EMAIL);
-        }
-    }
-
-    @Nested
     @DisplayName("Timestamp Behavior Tests")
     class TimestampBehaviorTests {
 

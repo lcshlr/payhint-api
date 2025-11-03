@@ -13,8 +13,8 @@ import com.payhint.api.application.crm.dto.request.RegisterUserRequest;
 import com.payhint.api.application.crm.dto.response.LoginResponse;
 import com.payhint.api.application.crm.dto.response.UserResponse;
 import com.payhint.api.application.crm.mapper.UserMapper;
-import com.payhint.api.application.crm.port.in.AuthenticationUseCase;
-import com.payhint.api.application.shared.exceptions.AlreadyExistException;
+import com.payhint.api.application.crm.usecases.AuthenticationUseCase;
+import com.payhint.api.application.shared.exceptions.AlreadyExistsException;
 import com.payhint.api.domain.crm.model.User;
 import com.payhint.api.domain.crm.repository.UserRepository;
 import com.payhint.api.domain.crm.valueobjects.Email;
@@ -43,11 +43,11 @@ public class AuthenticationService implements AuthenticationUseCase {
     public UserResponse register(RegisterUserRequest request) {
         Email email = request.email() == null ? null : new Email(request.email());
         userRepository.findByEmail(email).ifPresent(user -> {
-            throw new AlreadyExistException("User with email " + email + " already exists.");
+            throw new AlreadyExistsException("User with email " + email + " already exists.");
         });
 
-        User user = userMapper.toDomain(request);
-        user.setPassword(passwordEncoder.encode(user.getPassword()));
+        User user = new User(email, passwordEncoder.encode(request.password()), request.firstName(),
+                request.lastName());
         User savedUser = userRepository.register(user);
         return userMapper.toResponse(savedUser);
     }

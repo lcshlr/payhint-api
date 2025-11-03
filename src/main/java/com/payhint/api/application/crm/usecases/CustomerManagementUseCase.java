@@ -1,4 +1,4 @@
-package com.payhint.api.application.crm.port.in;
+package com.payhint.api.application.crm.usecases;
 
 import java.util.List;
 

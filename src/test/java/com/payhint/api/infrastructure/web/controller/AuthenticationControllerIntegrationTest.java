@@ -69,9 +69,10 @@ class AuthenticationControllerIntegrationTest {
                         mockMvc.perform(post("/api/auth/register").contentType(MediaType.APPLICATION_JSON)
                                         .content(objectMapper.writeValueAsString(request)))
                                         .andExpect(status().isBadRequest()).andExpect(jsonPath("$.status").value(400))
-                                        .andExpect(jsonPath("$.error").value("Bad Request"))
-                                        .andExpect(jsonPath("$.message").value(containsString("email")))
-                                        .andExpect(jsonPath("$.path").value("/api/auth/register"))
+                                        .andExpect(jsonPath("$.title").value("Invalid Input"))
+                                        .andExpect(jsonPath("$.detail").value("Validation failed"))
+                                        .andExpect(jsonPath("$.errors").value(containsString("email")))
+                                        .andExpect(jsonPath("$.instance").value("/api/auth/register"))
                                         .andExpect(jsonPath("$.timestamp").isNotEmpty());
                 }
 
@@ -83,8 +84,9 @@ class AuthenticationControllerIntegrationTest {
                         mockMvc.perform(post("/api/auth/register").contentType(MediaType.APPLICATION_JSON)
                                         .content(objectMapper.writeValueAsString(request)))
                                         .andExpect(status().isBadRequest()).andExpect(jsonPath("$.status").value(400))
-                                        .andExpect(jsonPath("$.error").value("Bad Request"))
-                                        .andExpect(jsonPath("$.message").value(containsString("email")));
+                                        .andExpect(jsonPath("$.title").value("Invalid Input"))
+                                        .andExpect(jsonPath("$.detail").value("Validation failed"))
+                                        .andExpect(jsonPath("$.errors").value(containsString("email")));
                 }
 
                 @Test
@@ -95,8 +97,9 @@ class AuthenticationControllerIntegrationTest {
                         mockMvc.perform(post("/api/auth/register").contentType(MediaType.APPLICATION_JSON)
                                         .content(objectMapper.writeValueAsString(request)))
                                         .andExpect(status().isBadRequest()).andExpect(jsonPath("$.status").value(400))
-                                        .andExpect(jsonPath("$.error").value("Bad Request"))
-                                        .andExpect(jsonPath("$.message").value(containsString("email")));
+                                        .andExpect(jsonPath("$.title").value("Invalid Input"))
+                                        .andExpect(jsonPath("$.detail").value("Validation failed"))
+                                        .andExpect(jsonPath("$.errors").value(containsString("email")));
                 }
 
                 @Test
@@ -108,8 +111,9 @@ class AuthenticationControllerIntegrationTest {
                         mockMvc.perform(post("/api/auth/register").contentType(MediaType.APPLICATION_JSON)
                                         .content(objectMapper.writeValueAsString(request)))
                                         .andExpect(status().isBadRequest()).andExpect(jsonPath("$.status").value(400))
-                                        .andExpect(jsonPath("$.error").value("Bad Request"))
-                                        .andExpect(jsonPath("$.message").value(containsString("password")));
+                                        .andExpect(jsonPath("$.title").value("Invalid Input"))
+                                        .andExpect(jsonPath("$.detail").value("Validation failed"))
+                                        .andExpect(jsonPath("$.errors").value(containsString("password")));
                 }
 
                 @Test
@@ -122,8 +126,9 @@ class AuthenticationControllerIntegrationTest {
                         mockMvc.perform(post("/api/auth/register").contentType(MediaType.APPLICATION_JSON)
                                         .content(objectMapper.writeValueAsString(request)))
                                         .andExpect(status().isBadRequest()).andExpect(jsonPath("$.status").value(400))
-                                        .andExpect(jsonPath("$.error").value("Bad Request"))
-                                        .andExpect(jsonPath("$.message").value(containsString("password")));
+                                        .andExpect(jsonPath("$.title").value("Invalid Input"))
+                                        .andExpect(jsonPath("$.detail").value("Validation failed"))
+                                        .andExpect(jsonPath("$.errors").value(containsString("password")));
                 }
 
                 @Test
@@ -135,8 +140,9 @@ class AuthenticationControllerIntegrationTest {
                         mockMvc.perform(post("/api/auth/register").contentType(MediaType.APPLICATION_JSON)
                                         .content(objectMapper.writeValueAsString(request)))
                                         .andExpect(status().isBadRequest()).andExpect(jsonPath("$.status").value(400))
-                                        .andExpect(jsonPath("$.error").value("Bad Request"))
-                                        .andExpect(jsonPath("$.message").value(containsString("password")));
+                                        .andExpect(jsonPath("$.title").value("Invalid Input"))
+                                        .andExpect(jsonPath("$.detail").value("Validation failed"))
+                                        .andExpect(jsonPath("$.errors").value(containsString("password")));
                 }
 
                 @Test
@@ -148,8 +154,9 @@ class AuthenticationControllerIntegrationTest {
                         mockMvc.perform(post("/api/auth/register").contentType(MediaType.APPLICATION_JSON)
                                         .content(objectMapper.writeValueAsString(request)))
                                         .andExpect(status().isBadRequest()).andExpect(jsonPath("$.status").value(400))
-                                        .andExpect(jsonPath("$.error").value("Bad Request"))
-                                        .andExpect(jsonPath("$.message").value(containsString("password")));
+                                        .andExpect(jsonPath("$.title").value("Invalid Input"))
+                                        .andExpect(jsonPath("$.detail").value("Validation failed"))
+                                        .andExpect(jsonPath("$.errors").value(containsString("password")));
                 }
 
                 @Test
@@ -161,8 +168,9 @@ class AuthenticationControllerIntegrationTest {
                         mockMvc.perform(post("/api/auth/register").contentType(MediaType.APPLICATION_JSON)
                                         .content(objectMapper.writeValueAsString(request)))
                                         .andExpect(status().isBadRequest()).andExpect(jsonPath("$.status").value(400))
-                                        .andExpect(jsonPath("$.error").value("Bad Request"))
-                                        .andExpect(jsonPath("$.message").value(containsString("firstName")));
+                                        .andExpect(jsonPath("$.title").value("Invalid Input"))
+                                        .andExpect(jsonPath("$.detail").value("Validation failed"))
+                                        .andExpect(jsonPath("$.errors").value(containsString("firstName")));
                 }
 
                 @Test
@@ -174,8 +182,9 @@ class AuthenticationControllerIntegrationTest {
                         mockMvc.perform(post("/api/auth/register").contentType(MediaType.APPLICATION_JSON)
                                         .content(objectMapper.writeValueAsString(request)))
                                         .andExpect(status().isBadRequest()).andExpect(jsonPath("$.status").value(400))
-                                        .andExpect(jsonPath("$.error").value("Bad Request"))
-                                        .andExpect(jsonPath("$.message").value(containsString("firstName")));
+                                        .andExpect(jsonPath("$.title").value("Invalid Input"))
+                                        .andExpect(jsonPath("$.detail").value("Validation failed"))
+                                        .andExpect(jsonPath("$.errors").value(containsString("firstName")));
                 }
 
                 @Test
@@ -187,8 +196,9 @@ class AuthenticationControllerIntegrationTest {
                         mockMvc.perform(post("/api/auth/register").contentType(MediaType.APPLICATION_JSON)
                                         .content(objectMapper.writeValueAsString(request)))
                                         .andExpect(status().isBadRequest()).andExpect(jsonPath("$.status").value(400))
-                                        .andExpect(jsonPath("$.error").value("Bad Request"))
-                                        .andExpect(jsonPath("$.message").value(containsString("lastName")));
+                                        .andExpect(jsonPath("$.title").value("Invalid Input"))
+                                        .andExpect(jsonPath("$.detail").value("Validation failed"))
+                                        .andExpect(jsonPath("$.errors").value(containsString("lastName")));
                 }
 
                 @Test
@@ -200,8 +210,9 @@ class AuthenticationControllerIntegrationTest {
                         mockMvc.perform(post("/api/auth/register").contentType(MediaType.APPLICATION_JSON)
                                         .content(objectMapper.writeValueAsString(request)))
                                         .andExpect(status().isBadRequest()).andExpect(jsonPath("$.status").value(400))
-                                        .andExpect(jsonPath("$.error").value("Bad Request"))
-                                        .andExpect(jsonPath("$.message").value(containsString("lastName")));
+                                        .andExpect(jsonPath("$.title").value("Invalid Input"))
+                                        .andExpect(jsonPath("$.detail").value("Validation failed"))
+                                        .andExpect(jsonPath("$.errors").value(containsString("lastName")));
                 }
 
                 @Test
@@ -210,7 +221,8 @@ class AuthenticationControllerIntegrationTest {
                         mockMvc.perform(post("/api/auth/register").contentType(MediaType.APPLICATION_JSON)
                                         .content("{}")).andExpect(status().isBadRequest())
                                         .andExpect(jsonPath("$.status").value(400))
-                                        .andExpect(jsonPath("$.error").value("Bad Request"));
+                                        .andExpect(jsonPath("$.title").value("Invalid Input"))
+                                        .andExpect(jsonPath("$.detail").value("Validation failed"));
                 }
 
                 @Test
@@ -228,8 +240,8 @@ class AuthenticationControllerIntegrationTest {
                         mockMvc.perform(post("/api/auth/register").contentType(MediaType.APPLICATION_JSON)
                                         .content(objectMapper.writeValueAsString(duplicateRequest)))
                                         .andExpect(status().isConflict()).andExpect(jsonPath("$.status").value(409))
-                                        .andExpect(jsonPath("$.error").value("Conflict"))
-                                        .andExpect(jsonPath("$.message").value(containsString("already")));
+                                        .andExpect(jsonPath("$.title").value("Resource Already Exists"))
+                                        .andExpect(jsonPath("$.detail").value(containsString("already")));
                 }
 
                 @Test
@@ -294,7 +306,9 @@ class AuthenticationControllerIntegrationTest {
                         mockMvc.perform(post("/api/auth/register").contentType(MediaType.APPLICATION_JSON)
                                         .content(objectMapper.writeValueAsString(request)))
                                         .andExpect(status().isBadRequest()).andExpect(jsonPath("$.status").value(400))
-                                        .andExpect(jsonPath("$.message").value(containsString("firstName")));
+                                        .andExpect(jsonPath("$.title").value("Invalid Input"))
+                                        .andExpect(jsonPath("$.detail").value("Validation failed"))
+                                        .andExpect(jsonPath("$.errors").value(containsString("firstName")));
                 }
 
                 @Test
@@ -306,7 +320,9 @@ class AuthenticationControllerIntegrationTest {
                         mockMvc.perform(post("/api/auth/register").contentType(MediaType.APPLICATION_JSON)
                                         .content(objectMapper.writeValueAsString(request)))
                                         .andExpect(status().isBadRequest()).andExpect(jsonPath("$.status").value(400))
-                                        .andExpect(jsonPath("$.message").value(containsString("lastName")));
+                                        .andExpect(jsonPath("$.title").value("Invalid Input"))
+                                        .andExpect(jsonPath("$.detail").value("Validation failed"))
+                                        .andExpect(jsonPath("$.errors").value(containsString("lastName")));
                 }
 
                 @Test
@@ -318,7 +334,9 @@ class AuthenticationControllerIntegrationTest {
                         mockMvc.perform(post("/api/auth/register").contentType(MediaType.APPLICATION_JSON)
                                         .content(objectMapper.writeValueAsString(request)))
                                         .andExpect(status().isBadRequest()).andExpect(jsonPath("$.status").value(400))
-                                        .andExpect(jsonPath("$.message").value(containsString("password")));
+                                        .andExpect(jsonPath("$.title").value("Invalid Input"))
+                                        .andExpect(jsonPath("$.detail").value("Validation failed"))
+                                        .andExpect(jsonPath("$.errors").value(containsString("password")));
                 }
         }
 
@@ -360,9 +378,9 @@ class AuthenticationControllerIntegrationTest {
                         mockMvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
                                         .content(objectMapper.writeValueAsString(loginRequest)))
                                         .andExpect(status().isUnauthorized()).andExpect(jsonPath("$.status").value(401))
-                                        .andExpect(jsonPath("$.error").value("Unauthorized"))
-                                        .andExpect(jsonPath("$.message").value("Invalid email or password"))
-                                        .andExpect(jsonPath("$.path").value("/api/auth/login"))
+                                        .andExpect(jsonPath("$.title").value("Authentication Failed"))
+                                        .andExpect(jsonPath("$.detail").value("Invalid email or password"))
+                                        .andExpect(jsonPath("$.instance").value("/api/auth/login"))
                                         .andExpect(jsonPath("$.timestamp").isNotEmpty());
                 }
 
@@ -375,8 +393,8 @@ class AuthenticationControllerIntegrationTest {
                         mockMvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
                                         .content(objectMapper.writeValueAsString(loginRequest)))
                                         .andExpect(status().isUnauthorized()).andExpect(jsonPath("$.status").value(401))
-                                        .andExpect(jsonPath("$.error").value("Unauthorized"))
-                                        .andExpect(jsonPath("$.message").value("Invalid email or password"));
+                                        .andExpect(jsonPath("$.title").value("Authentication Failed"))
+                                        .andExpect(jsonPath("$.detail").value("Invalid email or password"));
                 }
 
                 @Test
@@ -387,8 +405,9 @@ class AuthenticationControllerIntegrationTest {
                         mockMvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
                                         .content(objectMapper.writeValueAsString(loginRequest)))
                                         .andExpect(status().isBadRequest()).andExpect(jsonPath("$.status").value(400))
-                                        .andExpect(jsonPath("$.error").value("Bad Request"))
-                                        .andExpect(jsonPath("$.message").value(containsString("email")));
+                                        .andExpect(jsonPath("$.title").value("Invalid Input"))
+                                        .andExpect(jsonPath("$.detail").value("Validation failed"))
+                                        .andExpect(jsonPath("$.errors").value(containsString("email")));
                 }
 
                 @Test
@@ -399,8 +418,9 @@ class AuthenticationControllerIntegrationTest {
                         mockMvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
                                         .content(objectMapper.writeValueAsString(loginRequest)))
                                         .andExpect(status().isBadRequest()).andExpect(jsonPath("$.status").value(400))
-                                        .andExpect(jsonPath("$.error").value("Bad Request"))
-                                        .andExpect(jsonPath("$.message").value(containsString("email")));
+                                        .andExpect(jsonPath("$.title").value("Invalid Input"))
+                                        .andExpect(jsonPath("$.detail").value("Validation failed"))
+                                        .andExpect(jsonPath("$.errors").value(containsString("email")));
                 }
 
                 @Test
@@ -411,8 +431,9 @@ class AuthenticationControllerIntegrationTest {
                         mockMvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
                                         .content(objectMapper.writeValueAsString(loginRequest)))
                                         .andExpect(status().isBadRequest()).andExpect(jsonPath("$.status").value(400))
-                                        .andExpect(jsonPath("$.error").value("Bad Request"))
-                                        .andExpect(jsonPath("$.message").value(containsString("email")));
+                                        .andExpect(jsonPath("$.title").value("Invalid Input"))
+                                        .andExpect(jsonPath("$.detail").value("Validation failed"))
+                                        .andExpect(jsonPath("$.errors").value(containsString("email")));
                 }
 
                 @Test
@@ -423,8 +444,9 @@ class AuthenticationControllerIntegrationTest {
                         mockMvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
                                         .content(objectMapper.writeValueAsString(loginRequest)))
                                         .andExpect(status().isBadRequest()).andExpect(jsonPath("$.status").value(400))
-                                        .andExpect(jsonPath("$.error").value("Bad Request"))
-                                        .andExpect(jsonPath("$.message").value(containsString("password")));
+                                        .andExpect(jsonPath("$.title").value("Invalid Input"))
+                                        .andExpect(jsonPath("$.detail").value("Validation failed"))
+                                        .andExpect(jsonPath("$.errors").value(containsString("password")));
                 }
 
                 @Test
@@ -435,8 +457,9 @@ class AuthenticationControllerIntegrationTest {
                         mockMvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
                                         .content(objectMapper.writeValueAsString(loginRequest)))
                                         .andExpect(status().isBadRequest()).andExpect(jsonPath("$.status").value(400))
-                                        .andExpect(jsonPath("$.error").value("Bad Request"))
-                                        .andExpect(jsonPath("$.message").value(containsString("password")));
+                                        .andExpect(jsonPath("$.title").value("Invalid Input"))
+                                        .andExpect(jsonPath("$.detail").value("Validation failed"))
+                                        .andExpect(jsonPath("$.errors").value(containsString("password")));
                 }
 
                 @Test
@@ -447,8 +470,9 @@ class AuthenticationControllerIntegrationTest {
                         mockMvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
                                         .content(objectMapper.writeValueAsString(loginRequest)))
                                         .andExpect(status().isBadRequest()).andExpect(jsonPath("$.status").value(400))
-                                        .andExpect(jsonPath("$.error").value("Bad Request"))
-                                        .andExpect(jsonPath("$.message").value(containsString("password")));
+                                        .andExpect(jsonPath("$.title").value("Invalid Input"))
+                                        .andExpect(jsonPath("$.detail").value("Validation failed"))
+                                        .andExpect(jsonPath("$.errors").value(containsString("password")));
                 }
 
                 @Test
@@ -460,8 +484,9 @@ class AuthenticationControllerIntegrationTest {
                         mockMvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
                                         .content(objectMapper.writeValueAsString(loginRequest)))
                                         .andExpect(status().isBadRequest()).andExpect(jsonPath("$.status").value(400))
-                                        .andExpect(jsonPath("$.error").value("Bad Request"))
-                                        .andExpect(jsonPath("$.message").value(containsString("password")));
+                                        .andExpect(jsonPath("$.title").value("Invalid Input"))
+                                        .andExpect(jsonPath("$.detail").value("Validation failed"))
+                                        .andExpect(jsonPath("$.errors").value(containsString("password")));
                 }
 
                 @Test
@@ -469,7 +494,8 @@ class AuthenticationControllerIntegrationTest {
                 void shouldRejectEmptyRequestBody() throws Exception {
                         mockMvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON).content("{}"))
                                         .andExpect(status().isBadRequest()).andExpect(jsonPath("$.status").value(400))
-                                        .andExpect(jsonPath("$.error").value("Bad Request"));
+                                        .andExpect(jsonPath("$.title").value("Invalid Input"))
+                                        .andExpect(jsonPath("$.detail").value("Validation failed"));
                 }
 
                 @Test
@@ -480,7 +506,9 @@ class AuthenticationControllerIntegrationTest {
                         mockMvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
                                         .content(objectMapper.writeValueAsString(loginRequest)))
                                         .andExpect(status().isBadRequest()).andExpect(jsonPath("$.status").value(400))
-                                        .andExpect(jsonPath("$.message").value(containsString("email")));
+                                        .andExpect(jsonPath("$.title").value("Invalid Input"))
+                                        .andExpect(jsonPath("$.detail").value("Validation failed"))
+                                        .andExpect(jsonPath("$.errors").value(containsString("email")));
                 }
 
                 @Test
@@ -491,7 +519,9 @@ class AuthenticationControllerIntegrationTest {
                         mockMvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
                                         .content(objectMapper.writeValueAsString(loginRequest)))
                                         .andExpect(status().isBadRequest()).andExpect(jsonPath("$.status").value(400))
-                                        .andExpect(jsonPath("$.message").value(containsString("password")));
+                                        .andExpect(jsonPath("$.title").value("Invalid Input"))
+                                        .andExpect(jsonPath("$.detail").value("Validation failed"))
+                                        .andExpect(jsonPath("$.errors").value(containsString("password")));
                 }
 
                 @Test
