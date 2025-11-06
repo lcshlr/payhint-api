@@ -53,4 +53,14 @@ public class Payment {
             this.updatedAt = LocalDateTime.now();
         }
     }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj)
+            return true;
+        if (obj == null || getClass() != obj.getClass())
+            return false;
+        Payment other = (Payment) obj;
+        return id != null && id.equals(other.id);
+    }
 }

@@ -94,4 +94,16 @@ public class Invoice {
     public boolean isFullyPaid() {
         return getRemainingAmount().compareTo(Money.ZERO) == 0;
     }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o)
+            return true;
+        if (o == null || getClass() != o.getClass())
+            return false;
+
+        Invoice invoice = (Invoice) o;
+
+        return id != null ? id.equals(invoice.id) : invoice.id == null;
+    }
 }

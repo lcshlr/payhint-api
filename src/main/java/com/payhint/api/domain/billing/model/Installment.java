@@ -3,14 +3,14 @@ package com.payhint.api.domain.billing.model;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.LinkedHashMap;
-import java.util.Map;
+import java.util.ArrayList;
+import java.util.List;
 
 import com.payhint.api.domain.billing.exception.InvalidMoneyValueException;
+import com.payhint.api.domain.billing.exception.PaymentDoesNotBelongToInstallmentException;
 import com.payhint.api.domain.billing.valueobject.InstallmentId;
 import com.payhint.api.domain.billing.valueobject.InvoiceId;
 import com.payhint.api.domain.billing.valueobject.Money;
-import com.payhint.api.domain.billing.valueobject.PaymentId;
 
 import lombok.Getter;
 import lombok.NonNull;
@@ -30,18 +30,15 @@ public class Installment {
     @NonNull
     private PaymentStatus status;
     @NonNull
-    private Map<PaymentId, Payment> payments;
+    private List<Payment> payments;
     @NonNull
     private LocalDateTime createdAt;
     @NonNull
     private LocalDateTime updatedAt;
-    @NonNull
-    private LocalDateTime statusUpdatedAt;
 
     public Installment(InstallmentId id, @NonNull InvoiceId invoiceId, @NonNull Money amountDue,
             @NonNull Money amountPaid, @NonNull LocalDate dueDate, @NonNull PaymentStatus status,
-            @NonNull Map<PaymentId, Payment> payments, @NonNull LocalDateTime createdAt,
-            @NonNull LocalDateTime updatedAt, @NonNull LocalDateTime statusUpdatedAt) {
+            @NonNull List<Payment> payments, @NonNull LocalDateTime createdAt, @NonNull LocalDateTime updatedAt) {
         this.id = id;
         this.invoiceId = invoiceId;
         this.amountDue = amountDue;
@@ -51,12 +48,11 @@ public class Installment {
         this.payments = payments;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
-        this.statusUpdatedAt = statusUpdatedAt;
     }
 
     public static Installment create(InvoiceId invoiceId, Money amountDue, LocalDate dueDate) {
         return new Installment(null, invoiceId, amountDue, Money.ZERO, dueDate, PaymentStatus.PENDING,
-                new LinkedHashMap<>(), LocalDateTime.now(), LocalDateTime.now(), LocalDateTime.now());
+                new ArrayList<>(), LocalDateTime.now(), LocalDateTime.now());
     }
 
     public boolean isPaid() {
@@ -90,7 +86,6 @@ public class Installment {
         if (newStatus != this.status) {
             this.status = newStatus;
             this.updatedAt = LocalDateTime.now();
-            this.statusUpdatedAt = LocalDateTime.now();
         }
     }
 
@@ -113,11 +108,19 @@ public class Installment {
         }
     }
 
+    public LocalDateTime getLastPaymentDate() {
+        return payments.stream().map(Payment::getUpdatedAt).max(LocalDateTime::compareTo).orElse(null);
+    }
+
     void addPayment(@NonNull Payment payment) {
+        if (payment.getInstallmentId() == null || !payment.getInstallmentId().equals(this.id)) {
+            throw new PaymentDoesNotBelongToInstallmentException(payment.getInstallmentId());
+        }
+
         if (payment.getAmount().compareTo(getRemainingAmount()) > 0) {
             throw new InvalidMoneyValueException("Payment amount exceeds remaining installment amount");
         }
-        this.payments.put(payment.getId(), payment);
+        this.payments.add(payment);
         this.amountPaid = this.amountPaid.add(payment.getAmount());
         updatePaymentStatus();
     }
@@ -126,7 +129,8 @@ public class Installment {
         if (newPayment.getId() == null) {
             throw new IllegalArgumentException("Payment ID cannot be null when updating a payment");
         }
-        Payment existingPayment = this.payments.get(newPayment.getId());
+        Payment existingPayment = this.payments.stream().filter(p -> p.getId().equals(newPayment.getId())).findFirst()
+                .orElse(null);
 
         if (existingPayment == null) {
             throw new IllegalArgumentException("Payment to update not found in installment");
@@ -134,8 +138,12 @@ public class Installment {
 
         validatePaymentUpdate(existingPayment.getAmount(), newPayment.getAmount());
 
-        this.payments.put(newPayment.getId(), newPayment);
-        this.amountPaid = this.amountPaid.subtract(existingPayment.getAmount()).add(newPayment.getAmount());
+        Money existingAmount = existingPayment.getAmount();
+        Money newAmount = newPayment.getAmount();
+
+        existingPayment.updateDetails(newAmount, newPayment.getPaymentDate());
+
+        this.amountPaid = this.amountPaid.subtract(existingAmount).add(newAmount);
         updatePaymentStatus();
     }
 
@@ -143,11 +151,21 @@ public class Installment {
         if (payment.getId() == null) {
             throw new IllegalArgumentException("Payment ID cannot be null when removing a payment");
         }
-        if (this.payments.remove(payment.getId()) != null) {
+        if (this.payments.remove(payment)) {
             this.amountPaid = this.amountPaid.subtract(payment.getAmount());
             updatePaymentStatus();
         } else {
             throw new IllegalArgumentException("Payment not found in installment");
         }
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj)
+            return true;
+        if (obj == null || getClass() != obj.getClass())
+            return false;
+        Installment other = (Installment) obj;
+        return id != null && id.equals(other.id);
     }
 }
