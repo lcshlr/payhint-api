@@ -1,4 +1,4 @@
-# PayHint – Payment Follow-Up API
+# PayHint – Payment follow-up API
 
 PayHint is a Spring Boot API that helps freelancers and independent contractors track invoices, monitor overdue payments, and automate reminder workflows.
 
@@ -9,7 +9,7 @@ PayHint is a Spring Boot API that helps freelancers and independent contractors 
 - Follows a strict hexagonal architecture to keep the core domain independent from frameworks.
 - Provides testable layers with clear separation between domain, application, and infrastructure concerns.
 
-## Architecture Overview
+## Architecture overview
 
 The solution combines **Hexagonal Architecture (Ports & Adapters)** with **Domain-Driven Design (DDD)** patterns:
 
@@ -17,50 +17,50 @@ The solution combines **Hexagonal Architecture (Ports & Adapters)** with **Domai
 - **Application layer** orchestrates use cases, translates inputs via DTOs, and delegates to domain services.
 - **Infrastructure layer** adapts the domain to technical concerns such as persistence, HTTP, and security.
 
-### Package Structure
+### Package structure
 
 ```
 src/main/java/com/payhint/api
 ├── PayHintApplication.java
 ├── application/
 │   ├── billing/
-│   ├── crm/
 │   │   ├── dto/
 │   │   ├── mapper/
-│   │   ├── port/
+│   │   ├── usecase/
 │   │   └── service/
+│   ├── crm/
+│   │   ├── ### same as <billing>
 │   └── shared/
 │       ├── exceptions/
 │       └── ValueObjectMapper.java
 ├── domain/
 │   ├── billing/
-│   │   ├── model/
-│   │   └── repository/
-│   ├── crm/
+│   │   ├── exception/
 │   │   ├── model/
 │   │   ├── repository/
-│   │   └── valueobjects/
+|   |   └── valueobjects/
+│   ├── crm/
+│   │   ├── ### same as <billing>
 │   └── shared/
 │       └── annotation/
 └── infrastructure/
-    ├── configuration/
-    ├── persistence/
-    │   └── jpa/
-    │       ├── billing/
-    │       │   ├── adapter/
-    │       │   ├── entity/
-    │       │   ├── mapper/
-    │       │   └── repository/
-    │       └── crm/
-    │           ├── adapter/
-    │           ├── entity/
-    │           ├── mapper/
-    │           └── repository/
-    ├── security/
-    ├── utils/
-    └── web/
-        ├── controller/
-        └── exception/
+   ├── billing/
+   │   └── persistence/
+   │   │   └── jpa/
+   │   │       ├── adapter/
+   │   │       ├── entity/
+   │   │       ├── mapper/
+   │   │       └── repository/
+   │   └── web/
+   |        └── adapter/
+   ├── crm/
+   |   ├── ### same as <billing>
+   └── shared/
+      ├── configuration/
+      ├── exception/
+      ├── security/
+      └── utils/
+
 
 src/main/resources
 ├── application.yml
@@ -69,10 +69,11 @@ src/main/resources
 ├── application-prod.yml
 ├── application.template.yml
 └── static/
-    └── database_schema.sql
+   └── database_schema.sql
+
 ```
 
-## Technology Stack
+## Technology stack
 
 - Java 21
 - Spring Boot 3.x (web, data, validation, actuator)
@@ -80,9 +81,10 @@ src/main/resources
 - Spring Security 6 with JWT for stateless authentication
 - MapStruct for DTO ↔ domain mapping
 - Lombok to reduce boilerplate
+- JUnit 5 and Mockito for tests
 - Maven for build orchestration
 
-## Getting Started
+## Getting started
 
 ### Prerequisites
 
@@ -90,10 +92,15 @@ src/main/resources
 - PostgreSQL 14 or later
 - Maven 3.8+
 
-### Configure the Environment
+### Configure the environment
 
-1. Copy `src/main/resources/application.template.yml` to `application.yml` (or the profile-specific file you plan to use) and adjust credentials, JWT secrets, and mail settings.
-2. Create a PostgreSQL database and user with access rights:
+1. Copy `src/main/resources/application.template.yml` to `src/main/resources/application.yml` (or create a profile-specific file) and update the following placeholders:
+
+   - datasource URL, username and password
+   - `jwt.secret` and token properties
+   - mail settings used for reminder notifications
+
+2. Create a PostgreSQL database and user (example):
 
    ```sql
    CREATE DATABASE payhint_dev;
@@ -101,12 +108,12 @@ src/main/resources
    GRANT ALL PRIVILEGES ON DATABASE payhint_dev TO payhint_user;
    ```
 
-3. Run `src/main/resources/static/database_schema.sql` to provision schema objects.
+3. (Optional) Run `src/main/resources/static/database_schema.sql` to provision sample schema objects used by the project.
 
-### Run the Application
+### Run the application
 
 ```bash
-# Start the API with the dev profile (default)
+# Build and run (dev profile by default)
 ./mvnw spring-boot:run
 
 # Package the application
@@ -114,14 +121,15 @@ src/main/resources
 java -jar target/*.jar
 ```
 
-### Execute Tests
+### Execute tests
 
 ```bash
 ./mvnw test
 ```
 
-## Operational Notes
+## Operational notes
 
-- All non-authentication endpoints are protected by JWT; obtain a token via the authentication controller before accessing invoice or client resources.
-- Metrics, health checks, and readiness endpoints are exposed through Spring Boot Actuator when enabled via configuration.
-- Follow the Hexagonal Architecture guidelines when contributing: introduce new domain logic in `domain`, define ports in `application`, and implement adapters within `infrastructure`.
+- **Security:** All non-authentication endpoints require a valid JWT token. Use the authentication endpoints under `/api/auth` to register or obtain tokens.
+- **Profiles & configuration:** Use `application-dev.yml`, `application-test.yml`, and `application-prod.yml` for environment-specific settings.
+- **Actuator:** Metrics and health endpoints are available when enabled in configuration.
+- **Contributing:** For new features add domain logic under `src/main/java/com/payhint/api/domain`, expose use cases in `application`, and implement adapters in `infrastructure`.

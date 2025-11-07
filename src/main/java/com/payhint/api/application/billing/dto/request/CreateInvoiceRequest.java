@@ -1,4 +1,11 @@
 package com.payhint.api.application.billing.dto.request;
 
-public record CreateInvoiceRequest(String customerId, double amountDue, String dueDate) {
+import java.util.UUID;
+
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+
+public record CreateInvoiceRequest(@NotNull(message = "Customer ID is required") UUID customerId,
+                @NotBlank(message = "Invoice reference is required") String invoiceReference,
+                @NotBlank(message = "Currency is required") String currency) {
 }

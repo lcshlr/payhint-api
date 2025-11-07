@@ -2,19 +2,29 @@ package com.payhint.api.domain.billing.repository;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 
 import com.payhint.api.domain.billing.model.Invoice;
+import com.payhint.api.domain.billing.valueobject.InvoiceId;
+import com.payhint.api.domain.billing.valueobject.InvoiceReference;
+import com.payhint.api.domain.crm.valueobject.CustomerId;
 
 public interface InvoiceRepository {
 
     Invoice save(Invoice invoice);
 
-    Optional<Invoice> findById(UUID id);
+    Optional<Invoice> findById(InvoiceId id);
 
-    List<Invoice> findAllByCustomerId(UUID customerId);
+    Optional<Invoice> findByIdWithInstallments(InvoiceId id);
 
-    Optional<Invoice> findByCustomerIdAndInvoiceReference(UUID customerId, String invoiceReference);
+    Optional<Invoice> findByIdWithInstallmentsAndPayments(InvoiceId id);
 
-    void deleteById(UUID id);
+    List<Invoice> findAllByCustomerId(CustomerId customerId);
+
+    List<Invoice> findAllWithInstallmentsAndPaymentsByCustomerId(CustomerId customerId);
+
+    Optional<Invoice> findByCustomerIdAndInvoiceReference(CustomerId customerId, InvoiceReference invoiceReference);
+
+    void deleteById(InvoiceId id);
+
+    void deleteByCustomerId(CustomerId customerId);
 }

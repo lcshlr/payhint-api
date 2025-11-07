@@ -22,14 +22,12 @@ import com.payhint.api.application.crm.dto.request.LoginUserRequest;
 import com.payhint.api.application.crm.dto.request.RegisterUserRequest;
 import com.payhint.api.application.crm.dto.response.LoginResponse;
 import com.payhint.api.application.crm.dto.response.UserResponse;
-import com.payhint.api.application.crm.mapper.UserMapper;
 import com.payhint.api.application.shared.exception.AlreadyExistsException;
 import com.payhint.api.domain.crm.model.User;
 import com.payhint.api.domain.crm.repository.UserRepository;
 import com.payhint.api.domain.crm.valueobject.Email;
 import com.payhint.api.domain.crm.valueobject.UserId;
-import com.payhint.api.infrastructure.security.JwtTokenProvider;
-
+import com.payhint.api.infrastructure.shared.security.JwtTokenProvider;
 
 @SpringBootTest
 @TestPropertySource(properties = { "spring.datasource.url=jdbc:h2:mem:testdb",
@@ -51,9 +49,6 @@ class AuthenticationServiceIntegrationTest {
 
     @Autowired
     private JwtTokenProvider jwtTokenProvider;
-
-    @Autowired
-    private UserMapper userMapper;
 
     private static final String TEST_EMAIL = "integration.test@payhint.com";
     private static final String TEST_PASSWORD = "SecurePassword123!";

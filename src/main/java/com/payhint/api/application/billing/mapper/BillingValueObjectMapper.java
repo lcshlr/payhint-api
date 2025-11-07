@@ -48,7 +48,15 @@ public interface BillingValueObjectMapper {
         return money == null ? "0" : money.amount().toString();
     }
 
+    default BigDecimal mapMoneyToBigDecimal(Money money) {
+        return money == null ? BigDecimal.ZERO : money.amount();
+    }
+
     default Money mapToMoney(String amount) {
         return amount == null ? null : new Money(BigDecimal.valueOf(Double.parseDouble(amount)));
+    }
+
+    default Money mapToMoney(BigDecimal amount) {
+        return amount == null ? null : new Money(amount);
     }
 }

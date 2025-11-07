@@ -19,7 +19,7 @@ import com.payhint.api.application.shared.exception.AlreadyExistsException;
 import com.payhint.api.domain.crm.model.User;
 import com.payhint.api.domain.crm.repository.UserRepository;
 import com.payhint.api.domain.crm.valueobject.Email;
-import com.payhint.api.infrastructure.security.JwtTokenProvider;
+import com.payhint.api.infrastructure.shared.security.JwtTokenProvider;
 
 @Service
 public class AuthenticationService implements AuthenticationUseCase {
