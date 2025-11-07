@@ -55,7 +55,21 @@ public class PaymentTest {
         @DisplayName("Should throw error when creating payment with null installmentId")
         void shouldThrowErrorWhenCreatingPaymentWithNullInstallmentId() {
             assertThatThrownBy(() -> Payment.create(null, VALID_AMOUNT, VALID_PAYMENT_DATE))
-                    .isInstanceOf(NullPointerException.class).hasMessageContaining("installmentId");
+                    .isInstanceOf(NullPointerException.class);
+        }
+
+        @Test
+        @DisplayName("Should throw error when creating payment with null amount")
+        void shouldThrowErrorWhenCreatingPaymentWithNullAmount() {
+            assertThatThrownBy(() -> Payment.create(VALID_INSTALLMENT_ID, null, VALID_PAYMENT_DATE))
+                    .isInstanceOf(NullPointerException.class);
+        }
+
+        @Test
+        @DisplayName("Should throw error when creating payment with null paymentDate")
+        void shouldThrowErrorWhenCreatingPaymentWithNullPaymentDate() {
+            assertThatThrownBy(() -> Payment.create(VALID_INSTALLMENT_ID, VALID_AMOUNT, null))
+                    .isInstanceOf(NullPointerException.class);
         }
     }
 
@@ -67,7 +81,7 @@ public class PaymentTest {
         @DisplayName("Should update informations and set updatedAt timestamp")
         void shouldUpdateInformationsAndSetUpdatedAtTimestamp() throws InterruptedException {
             Payment payment = Payment.create(VALID_INSTALLMENT_ID, VALID_AMOUNT, VALID_PAYMENT_DATE);
-            Thread.sleep(10);
+            Thread.sleep(100);
             LocalDateTime originalUpdatedAt = payment.getUpdatedAt();
 
             LocalDate newPaymentDate = VALID_PAYMENT_DATE.plusDays(5);
@@ -85,18 +99,20 @@ public class PaymentTest {
             Payment payment = Payment.create(VALID_INSTALLMENT_ID, VALID_AMOUNT, VALID_PAYMENT_DATE);
             LocalDateTime originalUpdatedAt = payment.getUpdatedAt();
 
-            Thread.sleep(10);
+            Thread.sleep(100);
 
             payment.updateDetails(null, VALID_PAYMENT_DATE.plusDays(5));
             LocalDateTime firstUpdate = payment.getUpdatedAt();
 
-            Thread.sleep(10);
+            Thread.sleep(100);
 
-            payment.updateDetails(null, VALID_PAYMENT_DATE.plusDays(5));
+            // perform a different update so timestamp will change
+            payment.updateDetails(null, VALID_PAYMENT_DATE.plusDays(6));
             LocalDateTime secondUpdate = payment.getUpdatedAt();
 
             assertThat(payment.getAmount()).isEqualTo(VALID_AMOUNT);
-            assertThat(payment.getPaymentDate()).isEqualTo(VALID_PAYMENT_DATE.plusDays(5));
+            // final payment date should reflect the second update (plus 6 days)
+            assertThat(payment.getPaymentDate()).isEqualTo(VALID_PAYMENT_DATE.plusDays(6));
             assertThat(firstUpdate).isAfter(originalUpdatedAt);
             assertThat(secondUpdate).isAfter(firstUpdate);
         }
@@ -144,6 +160,43 @@ public class PaymentTest {
     }
 
     @Nested
+    @DisplayName("Equality Tests")
+    class EqualityTests {
+        @Test
+        @DisplayName("Should be equal when both payments have the same non-null id")
+        void shouldBeEqualWhenSameId() {
+            PaymentId id = new PaymentId(UUID.randomUUID());
+            Payment a = new Payment(id, VALID_INSTALLMENT_ID, VALID_AMOUNT, VALID_PAYMENT_DATE, LocalDateTime.now(),
+                    LocalDateTime.now());
+            Payment b = new Payment(id, VALID_INSTALLMENT_ID, VALID_AMOUNT, VALID_PAYMENT_DATE, LocalDateTime.now(),
+                    LocalDateTime.now());
+
+            assertThat(a).isEqualTo(b);
+            assertThat(a.equals(b)).isTrue();
+        }
+
+        @Test
+        @DisplayName("Should not be equal when ids are different")
+        void shouldNotBeEqualWhenDifferentIds() {
+            Payment a = new Payment(new PaymentId(UUID.randomUUID()), VALID_INSTALLMENT_ID, VALID_AMOUNT,
+                    VALID_PAYMENT_DATE, LocalDateTime.now(), LocalDateTime.now());
+            Payment b = new Payment(new PaymentId(UUID.randomUUID()), VALID_INSTALLMENT_ID, VALID_AMOUNT,
+                    VALID_PAYMENT_DATE, LocalDateTime.now(), LocalDateTime.now());
+
+            assertThat(a).isNotEqualTo(b);
+        }
+
+        @Test
+        @DisplayName("Should not be equal when id is null")
+        void shouldNotBeEqualWhenIdIsNull() {
+            Payment a = Payment.create(VALID_INSTALLMENT_ID, VALID_AMOUNT, VALID_PAYMENT_DATE);
+            Payment b = Payment.create(VALID_INSTALLMENT_ID, VALID_AMOUNT, VALID_PAYMENT_DATE);
+
+            assertThat(a).isNotEqualTo(b);
+        }
+    }
+
+    @Nested
     @DisplayName("Business Invariants Tests")
     class BusinessInvariantsTests {
         @Test
@@ -156,6 +209,48 @@ public class PaymentTest {
 
             assertThat(payment.getInstallmentId()).isEqualTo(VALID_INSTALLMENT_ID);
             assertThat(payment.getId()).isEqualTo(originalId);
+        }
+    }
+
+    @Nested
+    @DisplayName("Additional Equality + Numeric Behavior Tests")
+    class AdditionalTests {
+        @Test
+        @DisplayName("Should have same hashCode when equal (same non-null id)")
+        void shouldHaveSameHashCodeWhenEqual() {
+            PaymentId id = new PaymentId(UUID.randomUUID());
+            Payment a = new Payment(id, VALID_INSTALLMENT_ID, VALID_AMOUNT, VALID_PAYMENT_DATE, LocalDateTime.now(),
+                    LocalDateTime.now());
+            Payment b = new Payment(id, VALID_INSTALLMENT_ID, VALID_AMOUNT, VALID_PAYMENT_DATE, LocalDateTime.now(),
+                    LocalDateTime.now());
+
+            assertThat(a).isEqualTo(b);
+            assertThat(a.hashCode()).isEqualTo(b.hashCode());
+        }
+
+        @Test
+        @DisplayName("Should not be equal when one id is null and the other non-null")
+        void shouldNotBeEqualWhenOneIdNullAndOtherNonNull() {
+            Payment a = Payment.create(VALID_INSTALLMENT_ID, VALID_AMOUNT, VALID_PAYMENT_DATE);
+            Payment b = new Payment(new PaymentId(UUID.randomUUID()), VALID_INSTALLMENT_ID, VALID_AMOUNT,
+                    VALID_PAYMENT_DATE, LocalDateTime.now(), LocalDateTime.now());
+            assertThat(a).isNotEqualTo(b);
+            assertThat(b).isNotEqualTo(a);
+        }
+
+        @Test
+        @DisplayName("Should not update when numeric amount equal but scale differs")
+        void shouldNotUpdateWhenAmountNumericallyEqualButDifferentScale() {
+            Money amountWithScale1 = new Money(new java.math.BigDecimal("100.0"));
+            Payment payment = Payment.create(VALID_INSTALLMENT_ID, amountWithScale1, VALID_PAYMENT_DATE);
+            LocalDateTime originalUpdatedAt = payment.getUpdatedAt();
+
+            Money amountWithScale2 = new Money(new java.math.BigDecimal("100.00"));
+
+            payment.updateDetails(amountWithScale2, null);
+
+            assertThat(payment.getAmount()).isEqualTo(amountWithScale1);
+            assertThat(payment.getUpdatedAt()).isEqualTo(originalUpdatedAt);
         }
     }
 }

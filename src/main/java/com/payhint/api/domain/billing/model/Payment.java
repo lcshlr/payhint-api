@@ -3,6 +3,7 @@ package com.payhint.api.domain.billing.model;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
+import com.payhint.api.domain.billing.exception.InvalidMoneyValueException;
 import com.payhint.api.domain.billing.valueobject.InstallmentId;
 import com.payhint.api.domain.billing.valueobject.Money;
 import com.payhint.api.domain.billing.valueobject.PaymentId;
@@ -35,17 +36,21 @@ public class Payment {
         this.updatedAt = updatedAt;
     }
 
-    public static Payment create(InstallmentId installmentId, Money amount, LocalDate paymentDate) {
+    public static Payment create(@NonNull InstallmentId installmentId, @NonNull Money amount,
+            @NonNull LocalDate paymentDate) {
         return new Payment(null, installmentId, amount, paymentDate, LocalDateTime.now(), LocalDateTime.now());
     }
 
     void updateDetails(Money amount, LocalDate paymentDate) {
+        if (amount.compareTo(Money.ZERO) <= 0) {
+            throw new InvalidMoneyValueException("Payment amount must be greater than zero");
+        }
         boolean isUpdated = false;
-        if (amount != null) {
+        if (amount != null && !amount.equals(this.amount)) {
             this.amount = amount;
             isUpdated = true;
         }
-        if (paymentDate != null) {
+        if (paymentDate != null && !paymentDate.equals(this.paymentDate)) {
             this.paymentDate = paymentDate;
             isUpdated = true;
         }
@@ -62,5 +67,10 @@ public class Payment {
             return false;
         Payment other = (Payment) obj;
         return id != null && id.equals(other.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return id != null ? id.hashCode() : 0;
     }
 }
