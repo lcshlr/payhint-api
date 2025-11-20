@@ -41,9 +41,12 @@ public class Invoice {
 
     private List<Installment> installments = new ArrayList<>();
 
-    public Invoice(InvoiceId id, @NonNull CustomerId customerId, @NonNull InvoiceReference invoiceReference,
+    public Invoice(@NonNull InvoiceId id, @NonNull CustomerId customerId, @NonNull InvoiceReference invoiceReference,
             @NonNull String currency, @NonNull LocalDateTime createdAt, @NonNull LocalDateTime updatedAt,
             boolean isArchived) {
+        if (id == null) {
+            throw new InvalidPropertyException("InvoiceId cannot be null");
+        }
         this.id = id;
         this.customerId = customerId;
         this.invoiceReference = invoiceReference;
@@ -53,10 +56,9 @@ public class Invoice {
         this.updatedAt = updatedAt;
     }
 
-    public static Invoice create(@NonNull CustomerId customerId, @NonNull InvoiceReference invoiceReference,
-            @NonNull String currency) {
-        return new Invoice(null, customerId, invoiceReference, currency, LocalDateTime.now(), LocalDateTime.now(),
-                false);
+    public static Invoice create(@NonNull InvoiceId id, @NonNull CustomerId customerId,
+            @NonNull InvoiceReference invoiceReference, @NonNull String currency) {
+        return new Invoice(id, customerId, invoiceReference, currency, LocalDateTime.now(), LocalDateTime.now(), false);
     }
 
     public List<Installment> getInstallments() {

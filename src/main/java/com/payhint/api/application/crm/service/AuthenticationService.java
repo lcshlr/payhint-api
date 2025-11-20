@@ -1,5 +1,7 @@
 package com.payhint.api.application.crm.service;
 
+import java.util.UUID;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -19,6 +21,7 @@ import com.payhint.api.application.shared.exception.AlreadyExistsException;
 import com.payhint.api.domain.crm.model.User;
 import com.payhint.api.domain.crm.repository.UserRepository;
 import com.payhint.api.domain.crm.valueobject.Email;
+import com.payhint.api.domain.crm.valueobject.UserId;
 import com.payhint.api.infrastructure.shared.security.JwtTokenProvider;
 
 @Service
@@ -49,7 +52,8 @@ public class AuthenticationService implements AuthenticationUseCase {
             throw new AlreadyExistsException(errorMessage);
         });
 
-        User user = User.create(email, passwordEncoder.encode(request.password()), request.firstName(),
+        UserId userId = new UserId(UUID.randomUUID());
+        User user = User.create(userId, email, passwordEncoder.encode(request.password()), request.firstName(),
                 request.lastName());
         User savedUser = userRepository.register(user);
         logger.info("User registered successfully: " + savedUser.getEmail());

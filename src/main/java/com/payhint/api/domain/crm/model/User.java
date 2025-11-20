@@ -28,6 +28,9 @@ public class User {
 
     public User(UserId id, @NonNull Email email, @NonNull String password, @NonNull String firstName,
             @NonNull String lastName, @NonNull LocalDateTime createdAt, @NonNull LocalDateTime updatedAt) {
+        if (id == null) {
+            throw new InvalidPropertyException("UserId cannot be null");
+        }
         ensureNotBlankIfProvided("First name", firstName);
         ensureNotBlankIfProvided("Last name", lastName);
         ensureNotBlankIfProvided("Password", password);
@@ -41,20 +44,8 @@ public class User {
         this.updatedAt = updatedAt;
     }
 
-    public static User create(Email email, String password, String firstName, String lastName) {
-        if (email == null) {
-            throw new InvalidPropertyException("Email cannot be null");
-        }
-        if (firstName == null || firstName.isBlank()) {
-            throw new InvalidPropertyException("First name cannot be empty");
-        }
-        if (lastName == null || lastName.isBlank()) {
-            throw new InvalidPropertyException("Last name cannot be empty");
-        }
-        if (password.isBlank()) {
-            throw new InvalidPropertyException("Password cannot be empty");
-        }
-        return new User(null, email, password, firstName, lastName, LocalDateTime.now(), LocalDateTime.now());
+    public static User create(UserId id, Email email, String password, String firstName, String lastName) {
+        return new User(id, email, password, firstName, lastName, LocalDateTime.now(), LocalDateTime.now());
     }
 
     private void ensurePasswordIsValid(String password) {

@@ -1,6 +1,7 @@
 package com.payhint.api.application.crm.service;
 
 import java.util.List;
+import java.util.UUID;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -71,7 +72,9 @@ public class CustomerService implements CustomerManagementUseCase {
             throw new AlreadyExistsException(errorMessage);
         }
 
-        Customer customer = Customer.create(userId, request.companyName(), new Email(request.contactEmail()));
+        CustomerId customerId = new CustomerId(UUID.randomUUID());
+        Customer customer = Customer.create(customerId, userId, request.companyName(),
+                new Email(request.contactEmail()));
         Customer savedCustomer = customerRepository.save(customer);
         logger.info("Customer created successfully: " + savedCustomer.getCompanyName() + " for user ID " + userId);
         return customerMapper.toResponse(savedCustomer);

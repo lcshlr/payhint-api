@@ -5,20 +5,19 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-import com.payhint.api.domain.billing.model.Payment;
-import com.payhint.api.infrastructure.billing.persistence.jpa.mapper.InvoicePersistenceMapper;
+import org.springframework.data.domain.Persistable;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.PostLoad;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
@@ -36,13 +35,16 @@ import lombok.ToString;
 @AllArgsConstructor
 @ToString(onlyExplicitlyIncluded = true)
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
-public class PaymentJpaEntity {
+public class PaymentJpaEntity implements Persistable<UUID> {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
     @ToString.Include
     @EqualsAndHashCode.Include
     private UUID id;
+
+    @Transient
+    @Builder.Default
+    private boolean isNew = true;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "installment_id", nullable = false, updatable = false)
@@ -64,6 +66,12 @@ public class PaymentJpaEntity {
     protected void onCreate() {
         createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
+        this.isNew = false;
+    }
+
+    @PostLoad
+    protected void onPostLoad() {
+        this.isNew = false;
     }
 
     @PreUpdate
@@ -71,7 +79,8 @@ public class PaymentJpaEntity {
         updatedAt = LocalDateTime.now();
     }
 
-    public void updateFromDomain(Payment domain, InvoicePersistenceMapper mapper) {
-        mapper.mapPaymentFields(domain, this);
+    @Override
+    public boolean isNew() {
+        return this.isNew;
     }
 }

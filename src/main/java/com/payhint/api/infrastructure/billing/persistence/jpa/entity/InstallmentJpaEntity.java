@@ -4,29 +4,25 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
-import com.payhint.api.domain.billing.model.Installment;
-import com.payhint.api.domain.billing.model.Payment;
-import com.payhint.api.infrastructure.billing.persistence.jpa.mapper.InvoicePersistenceMapper;
+import org.springframework.data.domain.Persistable;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
+import jakarta.persistence.PostLoad;
+import jakarta.persistence.PostPersist;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
 import jakarta.persistence.UniqueConstraint;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -45,13 +41,16 @@ import lombok.ToString;
 @AllArgsConstructor
 @ToString(onlyExplicitlyIncluded = true)
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
-public class InstallmentJpaEntity {
+public class InstallmentJpaEntity implements Persistable<UUID> {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
     @ToString.Include
     @EqualsAndHashCode.Include
     private UUID id;
+
+    @Transient
+    @Builder.Default
+    private boolean isNew = true;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "invoice_id", nullable = false, updatable = false)
@@ -73,6 +72,17 @@ public class InstallmentJpaEntity {
     @Builder.Default
     private Set<PaymentJpaEntity> payments = new LinkedHashSet<>();
 
+    @Override
+    public boolean isNew() {
+        return isNew;
+    }
+
+    @PostLoad
+    @PostPersist
+    void onPostLoad() {
+        this.isNew = false;
+    }
+
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
@@ -92,34 +102,5 @@ public class InstallmentJpaEntity {
     public void removePayment(PaymentJpaEntity payment) {
         payments.remove(payment);
         payment.setInstallment(null);
-    }
-
-    public void updateFromDomain(Installment domain, InvoicePersistenceMapper mapper) {
-        mapper.mapInstallmentFields(domain, this);
-
-        Map<UUID, PaymentJpaEntity> existing = payments.stream()
-                .collect(Collectors.toMap(PaymentJpaEntity::getId, p -> p));
-
-        List<PaymentJpaEntity> toRemove = payments.stream()
-                .filter(p -> domain.getPayments().stream().noneMatch(d -> d.getId().value().equals(p.getId())))
-                .collect(Collectors.toList());
-
-        toRemove.forEach(this::removePayment);
-
-        for (Payment d : domain.getPayments()) {
-            if (d.getId() == null) {
-                PaymentJpaEntity newPay = mapper.toEntity(d);
-                addPayment(newPay);
-            } else {
-                PaymentJpaEntity existingPay = existing.get(d.getId().value());
-                if (existingPay != null) {
-                    existingPay.updateFromDomain(d, mapper);
-                } else {
-                    PaymentJpaEntity newPay = mapper.toEntity(d);
-                    addPayment(newPay);
-                    newPay.updateFromDomain(d, mapper);
-                }
-            }
-        }
     }
 }

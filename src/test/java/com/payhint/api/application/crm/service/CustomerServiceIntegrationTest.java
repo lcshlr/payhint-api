@@ -47,7 +47,8 @@ class CustomerServiceIntegrationTest {
 
     @Autowired
     private UserRepository userRepository;
-
+    private final CustomerId TEST_CUSTOMER_ID = new CustomerId(UUID.randomUUID());
+    private static final UserId TEST_USER_ID = new UserId(UUID.randomUUID());
     private static final String TEST_USER_EMAIL = "testuser@payhint.com";
     private static final String TEST_USER_PASSWORD = "Password123!";
     private static final String TEST_USER_FIRST_NAME = "Test";
@@ -61,7 +62,7 @@ class CustomerServiceIntegrationTest {
 
     @BeforeEach
     void setUp() {
-        testUser = User.create(new Email(TEST_USER_EMAIL), TEST_USER_PASSWORD, TEST_USER_FIRST_NAME,
+        testUser = User.create(TEST_USER_ID, new Email(TEST_USER_EMAIL), TEST_USER_PASSWORD, TEST_USER_FIRST_NAME,
                 TEST_USER_LAST_NAME);
         testUser = userRepository.register(testUser);
         testUserId = testUser.getId();
@@ -123,7 +124,8 @@ class CustomerServiceIntegrationTest {
         @Test
         @DisplayName("Should allow same company name for different users")
         void shouldAllowSameCompanyNameForDifferentUsers() {
-            User anotherUser = User.create(new Email("anotheruser@payhint.com"), "Password123!", "Another", "User");
+            User anotherUser = User.create(new UserId(UUID.randomUUID()), new Email("anotheruser@payhint.com"),
+                    "Password123!", "Another", "User");
             anotherUser = userRepository.register(anotherUser);
 
             CreateCustomerRequest request = new CreateCustomerRequest(TEST_COMPANY_NAME, TEST_CONTACT_EMAIL);
@@ -170,7 +172,8 @@ class CustomerServiceIntegrationTest {
 
         @BeforeEach
         void setUp() {
-            existingCustomer = Customer.create(testUserId, TEST_COMPANY_NAME, new Email(TEST_CONTACT_EMAIL));
+            existingCustomer = Customer.create(TEST_CUSTOMER_ID, TEST_USER_ID, TEST_COMPANY_NAME,
+                    new Email(TEST_CONTACT_EMAIL));
             existingCustomer = customerRepository.save(existingCustomer);
         }
 
@@ -265,7 +268,8 @@ class CustomerServiceIntegrationTest {
         @Test
         @DisplayName("Should throw PermissionDeniedException when customer belongs to different user")
         void shouldThrowPermissionDeniedExceptionWhenCustomerBelongsToDifferentUser() {
-            User anotherUser = User.create(new Email("anotheruser@payhint.com"), "Password123!", "Another", "User");
+            User anotherUser = User.create(new UserId(UUID.randomUUID()), new Email("anotheruser@payhint.com"),
+                    "Password123!", "Another", "User");
             User savedAnotherUser = userRepository.register(anotherUser);
 
             UpdateCustomerRequest request = new UpdateCustomerRequest("New Name", null);
@@ -300,7 +304,8 @@ class CustomerServiceIntegrationTest {
 
         @BeforeEach
         void setUp() {
-            existingCustomer = Customer.create(testUserId, TEST_COMPANY_NAME, new Email(TEST_CONTACT_EMAIL));
+            existingCustomer = Customer.create(TEST_CUSTOMER_ID, testUserId, TEST_COMPANY_NAME,
+                    new Email(TEST_CONTACT_EMAIL));
             existingCustomer = customerRepository.save(existingCustomer);
         }
 
@@ -337,7 +342,8 @@ class CustomerServiceIntegrationTest {
         @Test
         @DisplayName("Should throw PermissionDeniedException when customer belongs to different user")
         void shouldThrowPermissionDeniedExceptionWhenCustomerBelongsToDifferentUser() {
-            User anotherUser = User.create(new Email("anotheruser@payhint.com"), "Password123!", "Another", "User");
+            User anotherUser = User.create(new UserId(UUID.randomUUID()), new Email("anotheruser@payhint.com"),
+                    "Password123!", "Another", "User");
             User savedAnotherUser = userRepository.register(anotherUser);
 
             assertThatThrownBy(() -> customerService.deleteCustomer(savedAnotherUser.getId(), existingCustomer.getId()))
@@ -353,7 +359,8 @@ class CustomerServiceIntegrationTest {
         @Test
         @DisplayName("Should not affect other customers when deleting one")
         void shouldNotAffectOtherCustomersWhenDeletingOne() {
-            Customer anotherCustomer = Customer.create(testUserId, "Another Company", new Email("another@company.com"));
+            Customer anotherCustomer = Customer.create(new CustomerId(UUID.randomUUID()), testUserId, "Another Company",
+                    new Email("another@company.com"));
             anotherCustomer = customerRepository.save(anotherCustomer);
 
             customerService.deleteCustomer(testUserId, existingCustomer.getId());
@@ -371,7 +378,8 @@ class CustomerServiceIntegrationTest {
 
         @BeforeEach
         void setUp() {
-            existingCustomer = Customer.create(testUserId, TEST_COMPANY_NAME, new Email(TEST_CONTACT_EMAIL));
+            existingCustomer = Customer.create(TEST_CUSTOMER_ID, testUserId, TEST_COMPANY_NAME,
+                    new Email(TEST_CONTACT_EMAIL));
             existingCustomer = customerRepository.save(existingCustomer);
         }
 
@@ -410,7 +418,8 @@ class CustomerServiceIntegrationTest {
         @Test
         @DisplayName("Should throw PermissionDeniedException when customer belongs to different user")
         void shouldThrowPermissionDeniedExceptionWhenCustomerBelongsToDifferentUser() {
-            User anotherUser = User.create(new Email("anotheruser@payhint.com"), "Password123!", "Another", "User");
+            User anotherUser = User.create(new UserId(UUID.randomUUID()), new Email("anotheruser@payhint.com"),
+                    "Password123!", "Another", "User");
             User savedAnotherUser = userRepository.register(anotherUser);
 
             assertThatThrownBy(
@@ -450,9 +459,12 @@ class CustomerServiceIntegrationTest {
         @Test
         @DisplayName("Should return all customers for user")
         void shouldReturnAllCustomersForUser() {
-            Customer customer1 = Customer.create(testUserId, "Company A", new Email("companya@email.com"));
-            Customer customer2 = Customer.create(testUserId, "Company B", new Email("companyb@email.com"));
-            Customer customer3 = Customer.create(testUserId, "Company C", new Email("companyc@email.com"));
+            Customer customer1 = Customer.create(new CustomerId(UUID.randomUUID()), testUserId, "Company A",
+                    new Email("companya@email.com"));
+            Customer customer2 = Customer.create(new CustomerId(UUID.randomUUID()), testUserId, "Company B",
+                    new Email("companyb@email.com"));
+            Customer customer3 = Customer.create(new CustomerId(UUID.randomUUID()), testUserId, "Company C",
+                    new Email("companyc@email.com"));
 
             customerRepository.save(customer1);
             customerRepository.save(customer2);
@@ -468,13 +480,16 @@ class CustomerServiceIntegrationTest {
         @Test
         @DisplayName("Should only return customers belonging to the user")
         void shouldOnlyReturnCustomersBelongingToUser() {
-            User anotherUser = User.create(new Email("anotheruser@payhint.com"), "Password123!", "Another", "User");
+            User anotherUser = User.create(new UserId(UUID.randomUUID()), new Email("anotheruser@payhint.com"),
+                    "Password123!", "Another", "User");
             User savedAnotherUser = userRepository.register(anotherUser);
 
-            Customer userCustomer1 = Customer.create(testUserId, "User Company 1", new Email("user1@email.com"));
-            Customer userCustomer2 = Customer.create(testUserId, "User Company 2", new Email("user2@email.com"));
-            Customer otherUserCustomer = Customer.create(savedAnotherUser.getId(), "Other User Company",
-                    new Email("other@email.com"));
+            Customer userCustomer1 = Customer.create(new CustomerId(UUID.randomUUID()), testUserId, "User Company 1",
+                    new Email("user1@email.com"));
+            Customer userCustomer2 = Customer.create(new CustomerId(UUID.randomUUID()), testUserId, "User Company 2",
+                    new Email("user2@email.com"));
+            Customer otherUserCustomer = Customer.create(new CustomerId(UUID.randomUUID()), savedAnotherUser.getId(),
+                    "Other User Company", new Email("other@email.com"));
 
             customerRepository.save(userCustomer1);
             customerRepository.save(userCustomer2);
@@ -502,7 +517,8 @@ class CustomerServiceIntegrationTest {
         @Test
         @DisplayName("Should return customers with all fields correctly mapped")
         void shouldReturnCustomersWithAllFieldsCorrectlyMapped() {
-            Customer customer = Customer.create(testUserId, TEST_COMPANY_NAME, new Email(TEST_CONTACT_EMAIL));
+            Customer customer = Customer.create(new CustomerId(UUID.randomUUID()), testUserId, TEST_COMPANY_NAME,
+                    new Email(TEST_CONTACT_EMAIL));
             customer = customerRepository.save(customer);
 
             List<CustomerResponse> customers = customerService.listAllCustomers(testUserId);
@@ -517,9 +533,12 @@ class CustomerServiceIntegrationTest {
         @Test
         @DisplayName("Should return multiple customers in consistent order")
         void shouldReturnMultipleCustomersInConsistentOrder() {
-            Customer customer1 = Customer.create(testUserId, "Alpha Company", new Email("alpha@email.com"));
-            Customer customer2 = Customer.create(testUserId, "Beta Company", new Email("beta@email.com"));
-            Customer customer3 = Customer.create(testUserId, "Gamma Company", new Email("gamma@email.com"));
+            Customer customer1 = Customer.create(new CustomerId(UUID.randomUUID()), testUserId, "Alpha Company",
+                    new Email("alpha@email.com"));
+            Customer customer2 = Customer.create(new CustomerId(UUID.randomUUID()), testUserId, "Beta Company",
+                    new Email("beta@email.com"));
+            Customer customer3 = Customer.create(new CustomerId(UUID.randomUUID()), testUserId, "Gamma Company",
+                    new Email("gamma@email.com"));
 
             customerRepository.save(customer1);
             customerRepository.save(customer2);
@@ -596,7 +615,8 @@ class CustomerServiceIntegrationTest {
         @Test
         @DisplayName("Should update timestamp on modification")
         void shouldUpdateTimestampOnModification() throws InterruptedException {
-            Customer customer = Customer.create(testUserId, TEST_COMPANY_NAME, new Email(TEST_CONTACT_EMAIL));
+            Customer customer = Customer.create(new CustomerId(UUID.randomUUID()), testUserId, TEST_COMPANY_NAME,
+                    new Email(TEST_CONTACT_EMAIL));
             customer = customerRepository.save(customer);
 
             Thread.sleep(10);

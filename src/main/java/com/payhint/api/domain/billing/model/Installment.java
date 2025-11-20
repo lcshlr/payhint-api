@@ -34,8 +34,11 @@ public class Installment {
     @NonNull
     private LocalDateTime updatedAt;
 
-    public Installment(InstallmentId id, InvoiceId invoiceId, @NonNull Money amountDue, @NonNull LocalDate dueDate,
-            @NonNull LocalDateTime createdAt, @NonNull LocalDateTime updatedAt) {
+    public Installment(@NonNull InstallmentId id, InvoiceId invoiceId, @NonNull Money amountDue,
+            @NonNull LocalDate dueDate, @NonNull LocalDateTime createdAt, @NonNull LocalDateTime updatedAt) {
+        if (id == null) {
+            throw new InvalidPropertyException("InstallmentId cannot be null");
+        }
         this.id = id;
         this.invoiceId = invoiceId;
         this.amountDue = amountDue;
@@ -44,9 +47,9 @@ public class Installment {
         this.updatedAt = updatedAt;
     }
 
-    public static Installment create(@NonNull InvoiceId invoiceId, @NonNull Money amountDue,
+    public static Installment create(@NonNull InstallmentId id, @NonNull InvoiceId invoiceId, @NonNull Money amountDue,
             @NonNull LocalDate dueDate) {
-        return new Installment(null, invoiceId, amountDue, dueDate, LocalDateTime.now(), LocalDateTime.now());
+        return new Installment(id, invoiceId, amountDue, dueDate, LocalDateTime.now(), LocalDateTime.now());
     }
 
     public boolean isPaid() {

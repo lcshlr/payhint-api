@@ -1,6 +1,10 @@
 package com.payhint.api.infrastructure.billing.persistence.jpa.mapper;
 
+import java.util.Map;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
+import org.mapstruct.AfterMapping;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
@@ -19,7 +23,7 @@ public interface InvoicePersistenceMapper {
 
     @Mapping(target = "customer", ignore = true)
     @Mapping(target = "installments", ignore = true)
-    @Mapping(target = "isArchived", source = "archived")
+    @Mapping(target = "new", ignore = true)
     InvoiceJpaEntity toEntity(Invoice invoice);
 
     @Mapping(target = "customerId", source = "customer.id")
@@ -29,6 +33,7 @@ public interface InvoicePersistenceMapper {
 
     @Mapping(target = "invoice", ignore = true)
     @Mapping(target = "payments", ignore = true)
+    @Mapping(target = "new", ignore = true)
     InstallmentJpaEntity toEntity(Installment installment);
 
     @Mapping(target = "invoiceId", source = "invoice.id")
@@ -36,21 +41,11 @@ public interface InvoicePersistenceMapper {
     Installment toDomain(InstallmentJpaEntity entity);
 
     @Mapping(target = "installment", ignore = true)
+    @Mapping(target = "new", ignore = true)
     PaymentJpaEntity toEntity(Payment payment);
 
     @Mapping(target = "installmentId", source = "installment.id")
     Payment toDomain(PaymentJpaEntity entity);
-
-    @Mapping(target = "customer", ignore = true)
-    @Mapping(target = "installments", ignore = true)
-    void mapInvoiceFields(Invoice source, @MappingTarget InvoiceJpaEntity target);
-
-    @Mapping(target = "invoice", ignore = true)
-    @Mapping(target = "payments", ignore = true)
-    void mapInstallmentFields(Installment source, @MappingTarget InstallmentJpaEntity target);
-
-    @Mapping(target = "installment", ignore = true)
-    void mapPaymentFields(Payment source, @MappingTarget PaymentJpaEntity target);
 
     default Invoice toDomainWithDetails(InvoiceJpaEntity entity) {
         Invoice invoice = toDomain(entity);
@@ -67,4 +62,75 @@ public interface InvoicePersistenceMapper {
         }
         return installment;
     }
+
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "customer", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "new", ignore = true)
+    @Mapping(target = "installments", ignore = true)
+    void updateEntityFromDomain(Invoice domain, @MappingTarget InvoiceJpaEntity entity);
+
+    @AfterMapping
+    default void reconcileInstallments(Invoice domain, @MappingTarget InvoiceJpaEntity entity) {
+        Map<UUID, Installment> domainInstallmentsMap = domain.getInstallments().stream()
+                .collect(Collectors.toMap(i -> i.getId().value(), i -> i));
+
+        entity.getInstallments().removeIf(entityInstallment -> {
+            Installment domainInstallment = domainInstallmentsMap.get(entityInstallment.getId());
+            if (domainInstallment == null) {
+                return true;
+            } else {
+                updateEntity(domainInstallment, entityInstallment);
+                return false;
+            }
+        });
+
+        domain.getInstallments().forEach(domainInstallment -> {
+            boolean exists = entity.getInstallments().stream()
+                    .anyMatch(i -> i.getId().equals(domainInstallment.getId().value()));
+
+            if (!exists) {
+                InstallmentJpaEntity newEntity = toEntity(domainInstallment);
+                entity.addInstallment(newEntity);
+            }
+        });
+    }
+
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "invoice", ignore = true)
+    @Mapping(target = "new", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "payments", ignore = true)
+    void updateEntity(Installment domain, @MappingTarget InstallmentJpaEntity entity);
+
+    @AfterMapping
+    default void reconcilePayments(Installment domain, @MappingTarget InstallmentJpaEntity entity) {
+        Map<UUID, Payment> domainPaymentsMap = domain.getPayments().stream()
+                .collect(Collectors.toMap(p -> p.getId().value(), p -> p));
+
+        entity.getPayments().removeIf(entityPayment -> {
+            Payment domainPayment = domainPaymentsMap.get(entityPayment.getId());
+            if (domainPayment == null) {
+                return true;
+            } else {
+                updateEntity(domainPayment, entityPayment);
+                return false;
+            }
+        });
+
+        domain.getPayments().forEach(domainPayment -> {
+            boolean exists = entity.getPayments().stream()
+                    .anyMatch(p -> p.getId().equals(domainPayment.getId().value()));
+            if (!exists) {
+                PaymentJpaEntity newPayment = toEntity(domainPayment);
+                entity.addPayment(newPayment);
+            }
+        });
+    }
+
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "installment", ignore = true)
+    @Mapping(target = "new", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    void updateEntity(Payment domain, @MappingTarget PaymentJpaEntity entity);
 }

@@ -5,6 +5,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import org.springframework.data.domain.Persistable;
+
 import com.payhint.api.infrastructure.billing.persistence.jpa.entity.InvoiceJpaEntity;
 import com.payhint.api.infrastructure.shared.utils.Normalize;
 
@@ -12,15 +14,15 @@ import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
+import jakarta.persistence.PostLoad;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
 import jakarta.persistence.UniqueConstraint;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -33,11 +35,14 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class CustomerJpaEntity {
+public class CustomerJpaEntity implements Persistable<UUID> {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
+
+    @Transient
+    @Builder.Default
+    private boolean isNew = true;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false, updatable = false)
@@ -59,11 +64,22 @@ public class CustomerJpaEntity {
     @Builder.Default
     private List<InvoiceJpaEntity> invoices = new ArrayList<>();
 
+    @Override
+    public boolean isNew() {
+        return this.isNew;
+    }
+
     @PrePersist
     protected void onCreate() {
         contactEmail = Normalize.email(contactEmail);
         createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
+        this.isNew = false;
+    }
+
+    @PostLoad
+    protected void onPostLoad() {
+        this.isNew = false;
     }
 
     @PreUpdate

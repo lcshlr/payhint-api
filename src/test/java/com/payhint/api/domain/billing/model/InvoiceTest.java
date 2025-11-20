@@ -85,8 +85,8 @@ public class InvoiceTest {
                 @Test
                 @DisplayName("Should create invoice with factory method")
                 void shouldCreateInvoiceWithFactoryMethod() {
-                        Invoice invoice = new Invoice(VALID_INVOICE_ID, VALID_CUSTOMER_ID, VALID_INVOICE_REFERENCE,
-                                        VALID_CURRENCY, LocalDateTime.now(), LocalDateTime.now(), false);
+                        Invoice invoice = Invoice.create(VALID_INVOICE_ID, VALID_CUSTOMER_ID, VALID_INVOICE_REFERENCE,
+                                        VALID_CURRENCY);
 
                         assertThat(invoice.getId()).isEqualTo(VALID_INVOICE_ID);
                         assertThat(invoice.getCustomerId()).isEqualTo(VALID_CUSTOMER_ID);
@@ -141,8 +141,8 @@ public class InvoiceTest {
                         invoice = new Invoice(VALID_INVOICE_ID, VALID_CUSTOMER_ID, VALID_INVOICE_REFERENCE,
                                         VALID_CURRENCY, LocalDateTime.now(), LocalDateTime.now(), false);
 
-                        validInstallment = Installment.create(VALID_INVOICE_ID, new Money(BigDecimal.valueOf(500.00)),
-                                        LocalDate.now().plusDays(30));
+                        validInstallment = Installment.create(VALID_INSTALLMENT_ID, VALID_INVOICE_ID,
+                                        new Money(BigDecimal.valueOf(500.00)), LocalDate.now().plusDays(30));
                 }
 
                 @Test
@@ -408,8 +408,8 @@ public class InvoiceTest {
 
                         invoice.addInstallment(existingInstallment);
 
-                        validPayment = Payment.create(VALID_INSTALLMENT_ID, new Money(BigDecimal.valueOf(200.00)),
-                                        LocalDate.now());
+                        validPayment = Payment.create(VALID_PAYMENT_ID, VALID_INSTALLMENT_ID,
+                                        new Money(BigDecimal.valueOf(200.00)), LocalDate.now());
                 }
 
                 @Test
@@ -698,7 +698,7 @@ public class InvoiceTest {
                 @DisplayName("Should update total amount successfully")
                 void shouldUpdateTotalAmountSuccessfully() {
                         Money expectedAmount = new Money(BigDecimal.valueOf(1500.00));
-                        Installment inst = Installment.create(VALID_INVOICE_ID, expectedAmount,
+                        Installment inst = Installment.create(VALID_INSTALLMENT_ID, VALID_INVOICE_ID, expectedAmount,
                                         LocalDate.now().plusDays(30));
                         invoice.addInstallment(inst);
 
@@ -825,8 +825,9 @@ public class InvoiceTest {
                                         LocalDateTime.now(), LocalDateTime.now());
                         invoice.addInstallment(installment);
 
-                        Payment payment = new Payment(null, VALID_INSTALLMENT_ID, new Money(BigDecimal.valueOf(500.00)),
-                                        LocalDate.now(), LocalDateTime.now(), LocalDateTime.now());
+                        Payment payment = new Payment(VALID_PAYMENT_ID, VALID_INSTALLMENT_ID,
+                                        new Money(BigDecimal.valueOf(500.00)), LocalDate.now(), LocalDateTime.now(),
+                                        LocalDateTime.now());
                         invoice.addPayment(installment, payment);
 
                         assertThat(invoice.getStatus()).isEqualTo(PaymentStatus.PARTIALLY_PAID);
@@ -840,7 +841,7 @@ public class InvoiceTest {
                                         LocalDateTime.now(), LocalDateTime.now());
                         invoice.addInstallment(installment);
 
-                        Payment payment = new Payment(null, VALID_INSTALLMENT_ID,
+                        Payment payment = new Payment(VALID_PAYMENT_ID, VALID_INSTALLMENT_ID,
                                         new Money(BigDecimal.valueOf(1000.00)), LocalDate.now(), LocalDateTime.now(),
                                         LocalDateTime.now());
                         invoice.addPayment(installment, payment);
@@ -903,6 +904,16 @@ public class InvoiceTest {
                 }
 
                 @Test
+                @DisplayName("Should calculate total amount correctly")
+                void shouldCalculateTotalAmountCorrectly() {
+                        Money expectedAmount = new Money(BigDecimal.valueOf(1000));
+                        Installment inst = Installment.create(VALID_INSTALLMENT_ID, VALID_INVOICE_ID, expectedAmount,
+                                        LocalDate.now().plusDays(1));
+                        invoice.addInstallment(inst);
+                        assertThat(invoice.getTotalAmount()).isEqualTo(expectedAmount);
+                }
+
+                @Test
                 @DisplayName("Should calculate total paid correctly")
                 void shouldCalculateTotalPaidCorrectly() {
                         Installment installment1 = new Installment(VALID_INSTALLMENT_ID, VALID_INVOICE_ID,
@@ -915,12 +926,12 @@ public class InvoiceTest {
                                         LocalDateTime.now(), LocalDateTime.now());
                         invoice.addInstallment(installment2);
 
-                        Payment payment1 = new Payment(null, VALID_INSTALLMENT_ID,
+                        Payment payment1 = new Payment(VALID_PAYMENT_ID, VALID_INSTALLMENT_ID,
                                         new Money(BigDecimal.valueOf(300.00)), LocalDate.now(), LocalDateTime.now(),
                                         LocalDateTime.now());
                         invoice.addPayment(installment1, payment1);
 
-                        Payment payment2 = new Payment(null, VALID_INSTALLMENT_ID_2,
+                        Payment payment2 = new Payment(VALID_PAYMENT_ID, VALID_INSTALLMENT_ID_2,
                                         new Money(BigDecimal.valueOf(200.00)), LocalDate.now(), LocalDateTime.now(),
                                         LocalDateTime.now());
                         invoice.addPayment(installment2, payment2);
@@ -942,8 +953,9 @@ public class InvoiceTest {
                                         LocalDateTime.now(), LocalDateTime.now());
                         invoice.addInstallment(installment);
 
-                        Payment payment = new Payment(null, VALID_INSTALLMENT_ID, new Money(BigDecimal.valueOf(400.00)),
-                                        LocalDate.now(), LocalDateTime.now(), LocalDateTime.now());
+                        Payment payment = new Payment(VALID_PAYMENT_ID, VALID_INSTALLMENT_ID,
+                                        new Money(BigDecimal.valueOf(400.00)), LocalDate.now(), LocalDateTime.now(),
+                                        LocalDateTime.now());
                         invoice.addPayment(installment, payment);
 
                         assertThat(invoice.getRemainingAmount()).isEqualTo(new Money(BigDecimal.valueOf(600.00)));
@@ -957,7 +969,7 @@ public class InvoiceTest {
                                         LocalDateTime.now(), LocalDateTime.now());
                         invoice.addInstallment(installment);
 
-                        Payment payment = new Payment(null, VALID_INSTALLMENT_ID,
+                        Payment payment = new Payment(VALID_PAYMENT_ID, VALID_INSTALLMENT_ID,
                                         new Money(BigDecimal.valueOf(1000.00)), LocalDate.now(), LocalDateTime.now(),
                                         LocalDateTime.now());
                         invoice.addPayment(installment, payment);
@@ -973,8 +985,9 @@ public class InvoiceTest {
                                         LocalDateTime.now(), LocalDateTime.now());
                         invoice.addInstallment(installment);
 
-                        Payment payment = new Payment(null, VALID_INSTALLMENT_ID, new Money(BigDecimal.valueOf(500.00)),
-                                        LocalDate.now(), LocalDateTime.now(), LocalDateTime.now());
+                        Payment payment = new Payment(VALID_PAYMENT_ID, VALID_INSTALLMENT_ID,
+                                        new Money(BigDecimal.valueOf(500.00)), LocalDate.now(), LocalDateTime.now(),
+                                        LocalDateTime.now());
                         invoice.addPayment(installment, payment);
 
                         assertThat(invoice.isFullyPaid()).isFalse();
@@ -1025,70 +1038,44 @@ public class InvoiceTest {
         class EqualsTests {
 
                 @Test
-                @DisplayName("Should return true when comparing with same instance")
-                void shouldReturnTrueWhenComparingWithSameInstance() {
-                        Invoice invoice = new Invoice(VALID_INVOICE_ID, VALID_CUSTOMER_ID, VALID_INVOICE_REFERENCE,
-                                        VALID_CURRENCY, LocalDateTime.now(), LocalDateTime.now(), false);
+                @DisplayName("Should be equal if IDs are the same")
+                void shouldBeEqualIfIdsAreTheSame() {
+                        Invoice invoice1 = Invoice.create(VALID_INVOICE_ID, VALID_CUSTOMER_ID, VALID_INVOICE_REFERENCE,
+                                        VALID_CURRENCY);
+                        Invoice invoice2 = Invoice.create(VALID_INVOICE_ID, new CustomerId(UUID.randomUUID()),
+                                        new InvoiceReference("REF-002"), "EUR");
 
-                        assertThat(invoice.equals(invoice)).isTrue();
+                        assertThat(invoice1).isEqualTo(invoice2);
                 }
 
                 @Test
-                @DisplayName("Should return true when ids are equal")
-                void shouldReturnTrueWhenIdsAreEqual() {
-                        Invoice invoice1 = new Invoice(VALID_INVOICE_ID, VALID_CUSTOMER_ID, VALID_INVOICE_REFERENCE,
-                                        VALID_CURRENCY, LocalDateTime.now(), LocalDateTime.now(), false);
+                @DisplayName("Should not be equal if IDs are different")
+                void shouldNotBeEqualIfIdsAreDifferent() {
+                        Invoice invoice1 = Invoice.create(VALID_INVOICE_ID, VALID_CUSTOMER_ID, VALID_INVOICE_REFERENCE,
+                                        VALID_CURRENCY);
+                        Invoice invoice2 = Invoice.create(new InvoiceId(UUID.randomUUID()), VALID_CUSTOMER_ID,
+                                        VALID_INVOICE_REFERENCE, VALID_CURRENCY);
 
-                        Invoice invoice2 = new Invoice(VALID_INVOICE_ID, VALID_CUSTOMER_ID,
-                                        new InvoiceReference("INV-2025-002"), "EUR", LocalDateTime.now(),
-                                        LocalDateTime.now(), true);
-
-                        assertThat(invoice1.equals(invoice2)).isTrue();
+                        assertThat(invoice1).isNotEqualTo(invoice2);
                 }
 
                 @Test
-                @DisplayName("Should return false when ids are different")
-                void shouldReturnFalseWhenIdsAreDifferent() {
-                        Invoice invoice1 = new Invoice(new InvoiceId(UUID.randomUUID()), VALID_CUSTOMER_ID,
-                                        VALID_INVOICE_REFERENCE, VALID_CURRENCY, LocalDateTime.now(),
-                                        LocalDateTime.now(), false);
+                @DisplayName("Should not be equal to other object types")
+                void shouldNotBeEqualToOtherObjectTypes() {
+                        Invoice invoice = Invoice.create(VALID_INVOICE_ID, VALID_CUSTOMER_ID, VALID_INVOICE_REFERENCE,
+                                        VALID_CURRENCY);
+                        Object other = new Object();
 
-                        Invoice invoice2 = new Invoice(new InvoiceId(UUID.randomUUID()), VALID_CUSTOMER_ID,
-                                        VALID_INVOICE_REFERENCE, VALID_CURRENCY, LocalDateTime.now(),
-                                        LocalDateTime.now(), false);
-
-                        assertThat(invoice1.equals(invoice2)).isFalse();
+                        assertThat(invoice).isNotEqualTo(other);
                 }
 
                 @Test
-                @DisplayName("Should return false when comparing with null")
-                void shouldReturnFalseWhenComparingWithNull() {
-                        Invoice invoice = new Invoice(VALID_INVOICE_ID, VALID_CUSTOMER_ID, VALID_INVOICE_REFERENCE,
-                                        VALID_CURRENCY, LocalDateTime.now(), LocalDateTime.now(), false);
+                @DisplayName("Should not be equal to null")
+                void shouldNotBeEqualToNull() {
+                        Invoice invoice = Invoice.create(VALID_INVOICE_ID, VALID_CUSTOMER_ID, VALID_INVOICE_REFERENCE,
+                                        VALID_CURRENCY);
 
-                        assertThat(invoice.equals(null)).isFalse();
-                }
-
-                @Test
-                @DisplayName("Should return false when comparing with different class")
-                void shouldReturnFalseWhenComparingWithDifferentClass() {
-                        Invoice invoice = new Invoice(VALID_INVOICE_ID, VALID_CUSTOMER_ID, VALID_INVOICE_REFERENCE,
-                                        VALID_CURRENCY, LocalDateTime.now(), LocalDateTime.now(), false);
-
-                        assertThat(invoice.equals("Not an invoice")).isFalse();
-                }
-
-                @Test
-                @DisplayName("Should return false when id is null")
-                void shouldReturnFalseWhenIdIsNull() {
-                        Invoice invoice1 = new Invoice(VALID_INVOICE_ID, VALID_CUSTOMER_ID, VALID_INVOICE_REFERENCE,
-                                        VALID_CURRENCY, LocalDateTime.now(), LocalDateTime.now(), false);
-
-                        Invoice invoice2 = new Invoice(new InvoiceId(UUID.randomUUID()), VALID_CUSTOMER_ID,
-                                        VALID_INVOICE_REFERENCE, VALID_CURRENCY, LocalDateTime.now(),
-                                        LocalDateTime.now(), false);
-
-                        assertThat(invoice1.equals(invoice2)).isFalse();
+                        assertThat(invoice).isNotEqualTo(null);
                 }
         }
 
@@ -1107,7 +1094,7 @@ public class InvoiceTest {
                                         LocalDateTime.now(), LocalDateTime.now());
                         invoice.addInstallment(installment1);
 
-                        Installment installment2 = Installment.create(VALID_INVOICE_ID,
+                        Installment installment2 = Installment.create(VALID_INSTALLMENT_ID_2, VALID_INVOICE_ID,
                                         new Money(BigDecimal.valueOf(300.00)), LocalDate.now().plusDays(60));
 
                         invoice.addInstallment(installment2);
@@ -1338,19 +1325,6 @@ public class InvoiceTest {
 
                         assertThat(installments1).isNotSameAs(installments2);
                         assertThat(installments1).isEqualTo(installments2);
-                }
-
-                @Test
-                @DisplayName("Should create invoice using factory method with null ID")
-                void shouldCreateInvoiceUsingFactoryMethodWithNullId() {
-                        Invoice invoice = Invoice.create(VALID_CUSTOMER_ID, VALID_INVOICE_REFERENCE, VALID_CURRENCY);
-
-                        assertThat(invoice.getId()).isNull();
-                        assertThat(invoice.getCustomerId()).isEqualTo(VALID_CUSTOMER_ID);
-                        assertThat(invoice.getInvoiceReference()).isEqualTo(VALID_INVOICE_REFERENCE);
-                        assertThat(invoice.getCurrency()).isEqualTo(VALID_CURRENCY);
-                        assertThat(invoice.isArchived()).isFalse();
-                        assertThat(invoice.getInstallments()).isEmpty();
                 }
 
                 @Test

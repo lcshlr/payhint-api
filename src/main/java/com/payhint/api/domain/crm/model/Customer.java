@@ -26,6 +26,9 @@ public class Customer {
 
     public Customer(CustomerId id, @NonNull UserId userId, @NonNull String companyName, @NonNull Email contactEmail,
             @NonNull LocalDateTime createdAt, @NonNull LocalDateTime updatedAt) {
+        if (id == null) {
+            throw new InvalidPropertyException("CustomerId cannot be null");
+        }
         this.id = id;
         this.userId = userId;
         this.companyName = companyName;
@@ -34,8 +37,8 @@ public class Customer {
         this.updatedAt = updatedAt;
     }
 
-    public static Customer create(UserId userId, String companyName, Email contactEmail) {
-        return new Customer(null, userId, companyName, contactEmail, LocalDateTime.now(), LocalDateTime.now());
+    public static Customer create(CustomerId id, UserId userId, String companyName, Email contactEmail) {
+        return new Customer(id, userId, companyName, contactEmail, LocalDateTime.now(), LocalDateTime.now());
     }
 
     public void updateInformation(String companyName, Email contactEmail) {

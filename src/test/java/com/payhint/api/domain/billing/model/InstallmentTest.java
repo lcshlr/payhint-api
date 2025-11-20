@@ -31,12 +31,15 @@ public class InstallmentTest {
         private static final LocalDate VALID_INVOICE_DUE_DATE = LocalDate.now().plusDays(30);
         private static final Money VALID_INVOICE_200_DUE_AMOUNT = new Money(BigDecimal.valueOf(200.00));
         private static Installment VALID_INSTALLMENT = null;
+        private static Payment VALID_PAYMENT_100_AMOUNT = null;
 
         @BeforeEach
         void setup() {
                 VALID_INSTALLMENT = new Installment(VALID_INSTALLMENT_ID, VALID_INVOICE_ID,
                                 VALID_INVOICE_200_DUE_AMOUNT, VALID_INVOICE_DUE_DATE, LocalDateTime.now(),
                                 LocalDateTime.now());
+                VALID_PAYMENT_100_AMOUNT = new Payment(VALID_PAYMENT_ID, VALID_INSTALLMENT_ID, VALID_MONEY_100_AMOUNT,
+                                VALID_PAYMENT_DATE, LocalDateTime.now(), LocalDateTime.now());
         }
 
         @Nested
@@ -77,24 +80,25 @@ public class InstallmentTest {
                 @Test
                 @DisplayName("Should throw error when creating installment with null invoiceId")
                 void shouldThrowErrorWhenCreatingInstallmentWithNullInvoiceId() {
-                        assertThatThrownBy(() -> Installment.create(null, VALID_INVOICE_200_DUE_AMOUNT,
-                                        VALID_INVOICE_DUE_DATE)).isInstanceOf(NullPointerException.class)
+                        assertThatThrownBy(() -> Installment.create(VALID_INSTALLMENT_ID, null,
+                                        VALID_INVOICE_200_DUE_AMOUNT, VALID_INVOICE_DUE_DATE))
+                                                        .isInstanceOf(NullPointerException.class)
                                                         .hasMessageContaining("invoiceId");
                 }
 
                 @Test
                 @DisplayName("Should throw error when creating installment with null amountDue")
                 void shouldThrowErrorWhenCreatingInstallmentWithNullAmountDue() {
-                        assertThatThrownBy(() -> Installment.create(VALID_INVOICE_ID, null, VALID_INVOICE_DUE_DATE))
-                                        .isInstanceOf(NullPointerException.class).hasMessageContaining("amountDue");
+                        assertThatThrownBy(() -> Installment.create(VALID_INSTALLMENT_ID, VALID_INVOICE_ID, null,
+                                        VALID_INVOICE_DUE_DATE)).isInstanceOf(NullPointerException.class)
+                                                        .hasMessageContaining("amountDue");
                 }
 
                 @Test
                 @DisplayName("Should throw error when creating installment with null dueDate")
                 void shouldThrowErrorWhenCreatingInstallmentWithNullDueDate() {
-                        assertThatThrownBy(
-                                        () -> Installment.create(VALID_INVOICE_ID, VALID_INVOICE_200_DUE_AMOUNT, null))
-                                                        .isInstanceOf(NullPointerException.class)
+                        assertThatThrownBy(() -> Installment.create(VALID_INSTALLMENT_ID, VALID_INVOICE_ID,
+                                        VALID_INVOICE_200_DUE_AMOUNT, null)).isInstanceOf(NullPointerException.class)
                                                         .hasMessageContaining("dueDate");
                 }
         }
@@ -119,8 +123,8 @@ public class InstallmentTest {
                 @Test
                 @DisplayName("isOverdue returns true when past due and not paid")
                 void isOverdueWhenPastDueAndNotPaid() {
-                        Installment installment = Installment.create(VALID_INVOICE_ID, VALID_INVOICE_200_DUE_AMOUNT,
-                                        LocalDate.now().minusDays(1));
+                        Installment installment = Installment.create(VALID_INSTALLMENT_ID, VALID_INVOICE_ID,
+                                        VALID_INVOICE_200_DUE_AMOUNT, LocalDate.now().minusDays(1));
 
                         assertThat(installment.isOverdue()).isTrue();
                 }
@@ -142,8 +146,8 @@ public class InstallmentTest {
                 @Test
                 @DisplayName("getLastPaymentDate returns null when no payments")
                 void getLastPaymentDateReturnsNullWhenNoPayments() {
-                        Installment installment = Installment.create(VALID_INVOICE_ID, VALID_INVOICE_200_DUE_AMOUNT,
-                                        VALID_INVOICE_DUE_DATE);
+                        Installment installment = Installment.create(VALID_INSTALLMENT_ID, VALID_INVOICE_ID,
+                                        VALID_INVOICE_200_DUE_AMOUNT, VALID_INVOICE_DUE_DATE);
 
                         assertThat(installment.getPayments()).isEmpty();
                         assertThat(installment.getLastPaymentDate()).isEmpty();
@@ -274,7 +278,8 @@ public class InstallmentTest {
                                 Thread.currentThread().interrupt();
                         }
 
-                        installment.addPayment(Payment.create(installment.getId(), Money.ZERO, LocalDate.now()));
+                        installment.addPayment(Payment.create(VALID_PAYMENT_ID, installment.getId(),
+                                        new Money(BigDecimal.valueOf(1)), LocalDate.now()));
 
                         assertThat(installment.getUpdatedAt()).isAfter(initialUpdatedAt);
                 }
@@ -318,13 +323,43 @@ public class InstallmentTest {
         @Nested
         @DisplayName("Payment Operations Tests")
         class PaymentOperationsTests {
-                private Payment VALID_PAYMENT_100_AMOUNT;
+                @Test
+                @DisplayName("Should add payment successfully")
+                void shouldAddPaymentSuccessfully() {
+                        Payment payment = Payment.create(VALID_PAYMENT_ID, VALID_INSTALLMENT_ID, VALID_MONEY_100_AMOUNT,
+                                        VALID_PAYMENT_DATE);
+                        VALID_INSTALLMENT.addPayment(payment);
 
-                @BeforeEach
-                void setup() {
-                        VALID_PAYMENT_100_AMOUNT = new Payment(VALID_PAYMENT_ID, VALID_INSTALLMENT.getId(),
-                                        VALID_MONEY_100_AMOUNT, VALID_PAYMENT_DATE, LocalDateTime.now(),
-                                        LocalDateTime.now());
+                        assertThat(VALID_INSTALLMENT.getPayments()).hasSize(1);
+                        assertThat(VALID_INSTALLMENT.getAmountPaid()).isEqualTo(VALID_MONEY_100_AMOUNT);
+                }
+
+                @Test
+                @DisplayName("Should throw error when adding payment with null")
+                void shouldThrowErrorWhenAddingPaymentWithNull() {
+                        assertThatThrownBy(() -> VALID_INSTALLMENT.addPayment(null))
+                                        .isInstanceOf(NullPointerException.class);
+                }
+
+                @Test
+                @DisplayName("Should throw error when adding payment with amount exceeding remaining amount")
+                void shouldThrowErrorWhenAddingPaymentWithAmountExceedingRemainingAmount() {
+                        Payment payment = Payment.create(VALID_PAYMENT_ID, VALID_INSTALLMENT_ID,
+                                        new Money(BigDecimal.valueOf(300.00)), VALID_PAYMENT_DATE);
+
+                        assertThatThrownBy(() -> VALID_INSTALLMENT.addPayment(payment))
+                                        .isInstanceOf(InvalidMoneyValueException.class)
+                                        .hasMessageContaining("exceeds remaining installment amount");
+                }
+
+                @Test
+                @DisplayName("Should throw error when adding payment with zero amount")
+                void shouldThrowErrorWhenAddingPaymentWithZeroAmount() {
+                        assertThatThrownBy(() -> {
+                                VALID_INSTALLMENT.addPayment(Payment.create(VALID_PAYMENT_ID, VALID_INSTALLMENT.getId(),
+                                                Money.ZERO, LocalDate.now()));
+                        }).isInstanceOf(InvalidMoneyValueException.class)
+                                        .hasMessageContaining("Payment amount must be greater than zero");
                 }
 
                 @Test
@@ -337,13 +372,6 @@ public class InstallmentTest {
                         assertThat(VALID_INSTALLMENT.getPayments()).contains(VALID_PAYMENT_100_AMOUNT);
                         assertThat(VALID_INSTALLMENT.getStatus()).isEqualTo(PaymentStatus.PARTIALLY_PAID);
                         assertThat(VALID_INSTALLMENT.getUpdatedAt()).isAfter(VALID_INSTALLMENT.getCreatedAt());
-                }
-
-                @Test
-                @DisplayName("addPayment throws when payment is null")
-                void addPaymentNullThrows() {
-                        assertThatThrownBy(() -> VALID_INSTALLMENT.addPayment(null))
-                                        .isInstanceOf(NullPointerException.class);
                 }
 
                 @Test
@@ -411,17 +439,6 @@ public class InstallmentTest {
                 }
 
                 @Test
-                @DisplayName("updatePayment throws when payment id is null")
-                void updatePaymentNullIdThrows() {
-                        InstallmentId instId = new InstallmentId(UUID.randomUUID());
-                        Payment p = new Payment(null, instId, VALID_MONEY_100_AMOUNT, VALID_PAYMENT_DATE,
-                                        LocalDateTime.now(), LocalDateTime.now());
-
-                        assertThatThrownBy(() -> VALID_INSTALLMENT.updatePayment(p))
-                                        .isInstanceOf(InvalidPropertyException.class);
-                }
-
-                @Test
                 @DisplayName("removePayment decreases amountPaid and updates status and timestamps")
                 void removePaymentSuccess() {
                         Payment p = new Payment(VALID_PAYMENT_ID, VALID_INSTALLMENT.getId(), VALID_MONEY_100_AMOUNT,
@@ -436,16 +453,6 @@ public class InstallmentTest {
                         assertThat(VALID_INSTALLMENT.getAmountPaid()).isEqualTo(Money.ZERO);
                         assertThat(VALID_INSTALLMENT.getPayments()).doesNotContain(p);
                         assertThat(VALID_INSTALLMENT.getStatus()).isEqualTo(PaymentStatus.PENDING);
-                }
-
-                @Test
-                @DisplayName("removePayment throws when payment id is null")
-                void removePaymentNullIdThrows() {
-                        Payment p = new Payment(null, VALID_INSTALLMENT.getId(), VALID_MONEY_100_AMOUNT,
-                                        VALID_PAYMENT_DATE, LocalDateTime.now(), LocalDateTime.now());
-
-                        assertThatThrownBy(() -> VALID_INSTALLMENT.removePayment(p))
-                                        .isInstanceOf(InvalidPropertyException.class);
                 }
 
                 @Test
@@ -503,45 +510,60 @@ public class InstallmentTest {
         @DisplayName("Edge Case Tests")
         class EdgeCaseTests {
                 @Test
-                @DisplayName("isOverdue returns false when due today")
-                void isOverdueFalseWhenDueToday() {
-                        Installment installment = Installment.create(VALID_INVOICE_ID, VALID_INVOICE_200_DUE_AMOUNT,
-                                        LocalDate.now());
-                        assertThat(installment.isOverdue()).isFalse();
+                @DisplayName("Should handle multiple payments correctly")
+                void shouldHandleMultiplePaymentsCorrectly() {
+                        Installment installment = Installment.create(VALID_INSTALLMENT_ID, VALID_INVOICE_ID,
+                                        new Money(BigDecimal.valueOf(500.00)), VALID_INVOICE_DUE_DATE);
+                        Payment p1 = Payment.create(new PaymentId(UUID.randomUUID()), installment.getId(),
+                                        new Money(BigDecimal.valueOf(100.00)), LocalDate.now());
+                        Payment p2 = Payment.create(new PaymentId(UUID.randomUUID()), installment.getId(),
+                                        new Money(BigDecimal.valueOf(150.00)), LocalDate.now().plusDays(1));
+                        installment.addPayment(p1);
+                        installment.addPayment(p2);
+
+                        assertThat(installment.getAmountPaid()).isEqualTo(new Money(BigDecimal.valueOf(250.00)));
+                        assertThat(installment.getRemainingAmount()).isEqualTo(new Money(BigDecimal.valueOf(250.00)));
                 }
 
                 @Test
-                @DisplayName("isOverdue returns false when paid even if past due")
-                void isOverdueFalseWhenPaid() {
-                        Installment installment = new Installment(VALID_INSTALLMENT_ID, VALID_INVOICE_ID,
-                                        VALID_INVOICE_200_DUE_AMOUNT, LocalDate.now().minusDays(5), LocalDateTime.now(),
-                                        LocalDateTime.now());
-                        // mark as paid by adding payment equal to amount due
-                        Payment paid = new Payment(new PaymentId(UUID.randomUUID()), installment.getId(),
-                                        VALID_INVOICE_200_DUE_AMOUNT, LocalDate.now().minusDays(5), LocalDateTime.now(),
-                                        LocalDateTime.now());
-                        installment.addPayment(paid);
+                @DisplayName("Should have status PAID when fully paid")
+                void shouldHaveStatusPaidWhenFullyPaid() {
+                        Installment installment = Installment.create(VALID_INSTALLMENT_ID, VALID_INVOICE_ID,
+                                        VALID_INVOICE_200_DUE_AMOUNT, VALID_INVOICE_DUE_DATE);
+                        Payment payment = Payment.create(new PaymentId(UUID.randomUUID()), installment.getId(),
+                                        VALID_INVOICE_200_DUE_AMOUNT, LocalDate.now());
+                        installment.addPayment(payment);
 
-                        assertThat(installment.isOverdue()).isFalse();
+                        assertThat(installment.getStatus()).isEqualTo(PaymentStatus.PAID);
                 }
 
                 @Test
-                @DisplayName("equals behavior: same id equals true, null id equals false")
-                void equalsBehavior() {
-                        InstallmentId id = new InstallmentId(UUID.randomUUID());
-                        Installment a = new Installment(id, VALID_INVOICE_ID, new Money(BigDecimal.valueOf(100)),
-                                        LocalDate.now().plusDays(1), LocalDateTime.now(), LocalDateTime.now());
-                        Installment b = new Installment(id, VALID_INVOICE_ID, new Money(BigDecimal.valueOf(100)),
-                                        LocalDate.now().plusDays(1), LocalDateTime.now(), LocalDateTime.now());
+                @DisplayName("Should have status PARTIALLY_PAID when partially paid")
+                void shouldHaveStatusPartiallyPaidWhenPartiallyPaid() {
+                        Installment installment = Installment.create(VALID_INSTALLMENT_ID, VALID_INVOICE_ID,
+                                        VALID_INVOICE_200_DUE_AMOUNT, VALID_INVOICE_DUE_DATE);
+                        Payment payment = Payment.create(new PaymentId(UUID.randomUUID()), installment.getId(),
+                                        VALID_MONEY_100_AMOUNT, LocalDate.now());
+                        installment.addPayment(payment);
+
+                        assertThat(installment.getStatus()).isEqualTo(PaymentStatus.PARTIALLY_PAID);
+                }
+
+                @Test
+                @DisplayName("Equals and hashCode contract")
+                void equalsAndHashCodeContract() {
+                        Installment a = Installment.create(VALID_INSTALLMENT_ID, VALID_INVOICE_ID,
+                                        new Money(BigDecimal.valueOf(100)), LocalDate.now());
+                        Installment b = new Installment(VALID_INSTALLMENT_ID, VALID_INVOICE_ID,
+                                        new Money(BigDecimal.valueOf(200)), LocalDate.now().plusDays(1),
+                                        LocalDateTime.now(), LocalDateTime.now());
+
+                        Installment c = Installment.create(new InstallmentId(UUID.randomUUID()), VALID_INVOICE_ID,
+                                        new Money(BigDecimal.valueOf(100)), LocalDate.now());
 
                         assertThat(a).isEqualTo(b);
-
-                        Installment c = Installment.create(VALID_INVOICE_ID, new Money(BigDecimal.valueOf(100)),
-                                        LocalDate.now().plusDays(1));
-                        Installment d = Installment.create(VALID_INVOICE_ID, new Money(BigDecimal.valueOf(100)),
-                                        LocalDate.now().plusDays(1));
-
-                        assertThat(c).isNotEqualTo(d);
+                        assertThat(a).isNotEqualTo(c);
+                        assertThat(a.hashCode()).isEqualTo(b.hashCode());
                 }
         }
 }

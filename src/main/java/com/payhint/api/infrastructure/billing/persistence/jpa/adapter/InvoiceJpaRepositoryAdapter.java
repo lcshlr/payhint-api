@@ -2,9 +2,9 @@ package com.payhint.api.infrastructure.billing.persistence.jpa.adapter;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Component;
 
 import com.payhint.api.domain.billing.model.Invoice;
@@ -15,7 +15,6 @@ import com.payhint.api.domain.crm.valueobject.CustomerId;
 import com.payhint.api.infrastructure.billing.persistence.jpa.entity.InvoiceJpaEntity;
 import com.payhint.api.infrastructure.billing.persistence.jpa.mapper.InvoicePersistenceMapper;
 import com.payhint.api.infrastructure.billing.persistence.jpa.repository.InvoiceSpringRepository;
-import com.payhint.api.infrastructure.crm.persistence.jpa.entity.CustomerJpaEntity;
 import com.payhint.api.infrastructure.crm.persistence.jpa.repository.CustomerSpringRepository;
 
 import lombok.NonNull;
@@ -31,35 +30,23 @@ public class InvoiceJpaRepositoryAdapter implements InvoiceRepository {
 
     @Override
     public Invoice save(@NonNull Invoice invoice) {
-        UUID invoiceId = invoice.getId() != null ? invoice.getId().value() : null;
-        UUID customerId = invoice.getCustomerId() != null ? invoice.getCustomerId().value() : null;
-        if (customerId == null) {
-            throw new IllegalArgumentException("Customer ID cannot be null when saving an invoice.");
-        }
-        if (invoiceId == null) {
-            InvoiceJpaEntity entity = mapper.toEntity(invoice);
+        var existingEntityOpt = springDataInvoiceRepository.findById(invoice.getId().value());
 
-            CustomerJpaEntity customerEntity = springDataCustomerRepository.findById(customerId)
-                    .orElseThrow(() -> new RuntimeException("Customer not found"));
+        InvoiceJpaEntity entityToSave;
 
-            entity.setCustomer(customerEntity);
-
-            InvoiceJpaEntity saved = springDataInvoiceRepository.save(entity);
-
-            return mapper.toDomainWithDetails(saved);
+        if (existingEntityOpt.isPresent()) {
+            entityToSave = existingEntityOpt.get();
+            mapper.updateEntityFromDomain(invoice, entityToSave);
         } else {
-            InvoiceJpaEntity entity = springDataInvoiceRepository.findById(invoiceId)
-                    .orElseGet(() -> mapper.toEntity(invoice));
+            entityToSave = mapper.toEntity(invoice);
 
-            CustomerJpaEntity customerEntity = springDataCustomerRepository.findById(customerId)
-                    .orElseThrow(() -> new RuntimeException("Customer not found"));
-
-            entity.updateFromDomain(invoice, mapper, customerEntity);
-
-            InvoiceJpaEntity saved = springDataInvoiceRepository.save(entity);
-
-            return mapper.toDomainWithDetails(saved);
+            var customerEntity = springDataCustomerRepository.findById(invoice.getCustomerId().value())
+                    .orElseThrow(() -> new DataIntegrityViolationException("Customer not found"));
+            entityToSave.setCustomer(customerEntity);
         }
+
+        InvoiceJpaEntity saved = springDataInvoiceRepository.save(entityToSave);
+        return mapper.toDomainWithDetails(saved);
     }
 
     @Override

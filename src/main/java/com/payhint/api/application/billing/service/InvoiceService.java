@@ -3,6 +3,7 @@ package com.payhint.api.application.billing.service;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.UUID;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -147,7 +148,9 @@ public class InvoiceService
         InvoiceReference invoiceReference = new InvoiceReference(request.invoiceReference());
 
         ensureInvoiceReferenceUniqueForCustomer(customerId, invoiceReference);
-        Invoice invoice = Invoice.create(customerId, invoiceReference, request.currency());
+
+        InvoiceId invoiceId = new InvoiceId(UUID.randomUUID());
+        Invoice invoice = Invoice.create(invoiceId, customerId, invoiceReference, request.currency());
 
         Invoice savedInvoice = invoiceRepository.save(invoice);
         logger.info("Invoice created successfully: " + invoiceReference.toString() + " for user ID " + userId);
@@ -210,7 +213,8 @@ public class InvoiceService
         Money amountDue = new Money(request.amountDue());
         LocalDate dueDate = LocalDate.parse(request.dueDate(), DateTimeFormatter.ISO_LOCAL_DATE);
 
-        Installment installment = Installment.create(invoice.getId(), amountDue, dueDate);
+        InstallmentId installmentId = new InstallmentId(UUID.randomUUID());
+        Installment installment = Installment.create(installmentId, invoice.getId(), amountDue, dueDate);
         invoice.addInstallment(installment);
 
         Invoice savedInvoice = invoiceRepository.save(invoice);
@@ -267,7 +271,8 @@ public class InvoiceService
         Installment installment = invoice.findInstallmentById(installmentId);
         Money amount = new Money(request.amount());
         LocalDate paymentDate = LocalDate.parse(request.paymentDate(), DateTimeFormatter.ISO_LOCAL_DATE);
-        Payment payment = Payment.create(installmentId, amount, paymentDate);
+        PaymentId paymentId = new PaymentId(UUID.randomUUID());
+        Payment payment = Payment.create(paymentId, installmentId, amount, paymentDate);
         invoice.addPayment(installment, payment);
         Invoice savedInvoice = invoiceRepository.save(invoice);
         logger.info("Payment recorded in installment: " + installmentId.toString() + " for user ID " + userId);

@@ -26,8 +26,11 @@ public class Payment {
     @NonNull
     private LocalDateTime updatedAt;
 
-    public Payment(PaymentId id, @NonNull InstallmentId installmentId, @NonNull Money amount,
+    public Payment(@NonNull PaymentId id, @NonNull InstallmentId installmentId, @NonNull Money amount,
             @NonNull LocalDate paymentDate, @NonNull LocalDateTime createdAt, @NonNull LocalDateTime updatedAt) {
+        if (id == null) {
+            throw new com.payhint.api.domain.shared.exception.InvalidPropertyException("PaymentId cannot be null");
+        }
         this.id = id;
         this.installmentId = installmentId;
         this.amount = amount;
@@ -36,17 +39,18 @@ public class Payment {
         this.updatedAt = updatedAt;
     }
 
-    public static Payment create(@NonNull InstallmentId installmentId, @NonNull Money amount,
+    public static Payment create(@NonNull PaymentId id, @NonNull InstallmentId installmentId, @NonNull Money amount,
             @NonNull LocalDate paymentDate) {
-        return new Payment(null, installmentId, amount, paymentDate, LocalDateTime.now(), LocalDateTime.now());
+        return new Payment(id, installmentId, amount, paymentDate, LocalDateTime.now(), LocalDateTime.now());
     }
 
     void updateDetails(Money amount, LocalDate paymentDate) {
-        if (amount.compareTo(Money.ZERO) <= 0) {
-            throw new InvalidMoneyValueException("Payment amount must be greater than zero");
-        }
+
         boolean isUpdated = false;
         if (amount != null && !amount.equals(this.amount)) {
+            if (amount.compareTo(Money.ZERO) <= 0) {
+                throw new InvalidMoneyValueException("Payment amount must be greater than zero");
+            }
             this.amount = amount;
             isUpdated = true;
         }
