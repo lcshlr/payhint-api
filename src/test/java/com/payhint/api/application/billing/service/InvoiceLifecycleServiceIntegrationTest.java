@@ -37,6 +37,7 @@ import com.payhint.api.domain.crm.repository.UserRepository;
 import com.payhint.api.domain.crm.valueobject.CustomerId;
 import com.payhint.api.domain.crm.valueobject.Email;
 import com.payhint.api.domain.crm.valueobject.UserId;
+import com.payhint.api.domain.shared.exception.InvalidPropertyException;
 import com.payhint.api.infrastructure.billing.persistence.jpa.repository.InvoiceSpringRepository;
 import com.payhint.api.infrastructure.crm.persistence.jpa.repository.CustomerSpringRepository;
 import com.payhint.api.infrastructure.crm.persistence.jpa.repository.UserSpringRepository;
@@ -103,18 +104,21 @@ class InvoiceLifecycleServiceIntegrationTest {
 
                 @Test
                 void shouldThrowAlreadyExistsWhenCreatingDuplicateReferenceForSameCustomer() {
-                        var firstRequest = new CreateInvoiceRequest(testCustomer.getId().value(), "INV-DUP-REF", "USD");
+                        var firstRequest = new CreateInvoiceRequest(testCustomer.getId().value(), "INV-DUP-REF", "USD",
+                                        null);
                         invoiceService.createInvoice(testUser.getId(), firstRequest);
                         var duplicateRequest = new CreateInvoiceRequest(testCustomer.getId().value(), "INV-DUP-REF",
-                                        "USD");
+                                        "USD", null);
                         assertThatThrownBy(() -> invoiceService.createInvoice(testUser.getId(), duplicateRequest))
                                         .isInstanceOf(AlreadyExistsException.class);
                 }
 
                 @Test
                 void shouldAllowSameReferenceForDifferentCustomers() {
-                        var req1 = new CreateInvoiceRequest(testCustomer.getId().value(), "INV-SHARED-001", "USD");
-                        var req2 = new CreateInvoiceRequest(otherCustomer.getId().value(), "INV-SHARED-001", "USD");
+                        var req1 = new CreateInvoiceRequest(testCustomer.getId().value(), "INV-SHARED-001", "USD",
+                                        null);
+                        var req2 = new CreateInvoiceRequest(otherCustomer.getId().value(), "INV-SHARED-001", "USD",
+                                        null);
                         var r1 = invoiceService.createInvoice(testUser.getId(), req1);
                         var r2 = invoiceService.createInvoice(otherUser.getId(), req2);
                         assertThat(r1.invoiceReference()).isEqualTo(r2.invoiceReference());
@@ -147,7 +151,8 @@ class InvoiceLifecycleServiceIntegrationTest {
 
                 @Test
                 void shouldCreateInvoiceSuccessfully() {
-                        var request = new CreateInvoiceRequest(testCustomer.getId().value(), "INV-2025-001", "USD");
+                        var request = new CreateInvoiceRequest(testCustomer.getId().value(), "INV-2025-001", "USD",
+                                        null);
 
                         InvoiceResponse response = invoiceService.createInvoice(testUser.getId(), request);
 
@@ -155,11 +160,42 @@ class InvoiceLifecycleServiceIntegrationTest {
                         assertThat(response.invoiceReference()).isEqualTo("INV-2025-001");
                         assertThat(response.currency()).isEqualTo("USD");
                         assertThat(response.customerId()).isEqualTo(testCustomer.getId().value().toString());
+                        assertThat(response.installments().isEmpty()).isTrue();
+                }
+
+                @Test
+                void shouldCreateInvoiceWithInstallmentsSuccessfully() {
+                        var request = new CreateInvoiceRequest(testCustomer.getId().value(), "INV-2025-004", "USD",
+                                        List.of(new CreateInstallmentRequest(new BigDecimal("50"),
+                                                        LocalDate.now().plusDays(10).toString()),
+                                                        new CreateInstallmentRequest(new BigDecimal("50"),
+                                                                        LocalDate.now().plusDays(20).toString())));
+
+                        InvoiceResponse response = invoiceService.createInvoice(testUser.getId(), request);
+
+                        assertThat(response).isNotNull();
+                        assertThat(response.invoiceReference()).isEqualTo("INV-2025-004");
+                        assertThat(response.installments()).hasSize(2);
+                        assertThat(response.installments()).extracting("amountDue")
+                                        .containsExactlyInAnyOrder(new BigDecimal("50"), new BigDecimal("50"));
+                        assertThat(response.totalAmount()).isEqualTo(new BigDecimal("100"));
+                }
+
+                @Test
+                void shouldThrowExceptionWhenCreatingInvoiceWithDuplicateDueDatesInstallments() {
+                        var request = new CreateInvoiceRequest(testCustomer.getId().value(), "INV-2025-006", "USD",
+                                        List.of(new CreateInstallmentRequest(new BigDecimal("10"),
+                                                        LocalDate.now().plusDays(20).toString()),
+                                                        new CreateInstallmentRequest(new BigDecimal("10"),
+                                                                        LocalDate.now().plusDays(20).toString())));
+
+                        assertThatThrownBy(() -> invoiceService.createInvoice(testUser.getId(), request))
+                                        .isInstanceOf(InvalidPropertyException.class);
                 }
 
                 @Test
                 void shouldThrowExceptionWhenCreatingInvoiceForNonExistentCustomer() {
-                        var request = new CreateInvoiceRequest(UUID.randomUUID(), "INV-2025-002", "USD");
+                        var request = new CreateInvoiceRequest(UUID.randomUUID(), "INV-2025-002", "USD", null);
 
                         assertThatThrownBy(() -> invoiceService.createInvoice(testUser.getId(), request))
                                         .isInstanceOf(NotFoundException.class);
@@ -167,7 +203,8 @@ class InvoiceLifecycleServiceIntegrationTest {
 
                 @Test
                 void shouldThrowExceptionWhenCreatingInvoiceForOtherUsersCustomer() {
-                        var request = new CreateInvoiceRequest(otherCustomer.getId().value(), "INV-2025-003", "USD");
+                        var request = new CreateInvoiceRequest(otherCustomer.getId().value(), "INV-2025-003", "USD",
+                                        null);
 
                         assertThatThrownBy(() -> invoiceService.createInvoice(testUser.getId(), request))
                                         .isInstanceOf(PermissionDeniedException.class);

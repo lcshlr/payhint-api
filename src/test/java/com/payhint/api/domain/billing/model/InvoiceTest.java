@@ -50,6 +50,7 @@ public class InvoiceTest {
                         assertThat(invoice.getTotalAmount()).isEqualTo(Money.ZERO);
                         assertThat(invoice.getCurrency()).isEqualTo(VALID_CURRENCY);
                         assertThat(invoice.isArchived()).isFalse();
+                        assertThat(invoice.getInstallments()).isEmpty();
                         assertThat(invoice.getCreatedAt()).isEqualTo(now);
                         assertThat(invoice.getUpdatedAt()).isEqualTo(now);
                 }
@@ -180,6 +181,66 @@ public class InvoiceTest {
 
                         assertThat(invoice.getUpdatedAt()).isAfter(originalUpdatedAt);
                 }
+
+                @Test
+                @DisplayName("Should add multiple installments successfully in one go")
+                void shouldAddMultipleInstallmentsSuccessfullyInOneGo() {
+                        List<Installment> newInstallments = List.of(
+                                        Installment.create(new InstallmentId(UUID.randomUUID()),
+                                                        new Money(BigDecimal.valueOf(300.00)),
+                                                        LocalDate.now().plusDays(15)),
+                                        Installment.create(new InstallmentId(UUID.randomUUID()),
+                                                        new Money(BigDecimal.valueOf(400.00)),
+                                                        LocalDate.now().plusDays(30)),
+                                        Installment.create(new InstallmentId(UUID.randomUUID()),
+                                                        new Money(BigDecimal.valueOf(500.00)),
+                                                        LocalDate.now().plusDays(45)));
+                        invoice.addInstallments(newInstallments);
+
+                        assertThat(invoice.getInstallments()).hasSize(3);
+                        assertThat(invoice.getTotalAmount()).isEqualTo(new Money(BigDecimal.valueOf(1200.00)));
+                }
+
+                @Test
+                @DisplayName("Should throw exception when adding multiple installments with duplicate due dates")
+                void shouldThrowExceptionWhenAddingMultipleInstallmentsWithDuplicateDueDates() {
+                        List<Installment> newInstallments = List.of(
+                                        Installment.create(new InstallmentId(UUID.randomUUID()),
+                                                        new Money(BigDecimal.valueOf(300.00)),
+                                                        LocalDate.now().plusDays(15)),
+                                        Installment.create(new InstallmentId(UUID.randomUUID()),
+                                                        new Money(BigDecimal.valueOf(400.00)),
+                                                        LocalDate.now().plusDays(30)),
+                                        Installment.create(new InstallmentId(UUID.randomUUID()),
+                                                        new Money(BigDecimal.valueOf(500.00)),
+                                                        LocalDate.now().plusDays(15))); // duplicate due date
+
+                        assertThatThrownBy(() -> invoice.addInstallments(newInstallments))
+                                        .isInstanceOf(InvalidPropertyException.class)
+                                        .hasMessageContaining("duplicate due dates");
+                }
+
+                @Test
+                @DisplayName("Should not add any installments if one installment in the batch fails")
+                void shouldNotAddAnyInstallmentsIfOneFails() {
+                        List<Installment> newInstallments = List.of(
+                                        Installment.create(new InstallmentId(UUID.randomUUID()),
+                                                        new Money(BigDecimal.valueOf(300.00)),
+                                                        LocalDate.now().plusDays(15)),
+                                        Installment.create(new InstallmentId(UUID.randomUUID()),
+                                                        new Money(BigDecimal.valueOf(400.00)),
+                                                        LocalDate.now().plusDays(30)),
+                                        Installment.create(new InstallmentId(UUID.randomUUID()),
+                                                        new Money(BigDecimal.valueOf(500.00)),
+                                                        LocalDate.now().plusDays(15))); // duplicate due date
+
+                        assertThatThrownBy(() -> invoice.addInstallments(newInstallments))
+                                        .isInstanceOf(InvalidPropertyException.class)
+                                        .hasMessageContaining("duplicate due dates");
+
+                        assertThat(invoice.getInstallments()).isEmpty();
+                }
+
         }
 
         @Nested

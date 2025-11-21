@@ -3,7 +3,9 @@ package com.payhint.api.domain.billing.model;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 import com.payhint.api.domain.billing.exception.InstallmentDoesNotBelongToInvoiceException;
@@ -152,6 +154,28 @@ public class Invoice {
     public Installment findInstallmentById(@NonNull InstallmentId installmentId) {
         return this.installments.stream().filter(inst -> inst.getId().equals(installmentId)).findFirst()
                 .orElseThrow(() -> new InstallmentDoesNotBelongToInvoiceException(installmentId, this.id));
+    }
+
+    public void addInstallments(@NonNull List<Installment> installments) {
+        ensureNotArchived();
+        if (installments.isEmpty()) {
+            return;
+        }
+
+        Set<LocalDate> newDueDates = new HashSet<>();
+        for (Installment inst : installments) {
+            if (!newDueDates.add(inst.getDueDate())) {
+                throw new InvalidPropertyException(
+                        "The payment schedule contains duplicate due dates: " + inst.getDueDate());
+            }
+        }
+
+        for (Installment inst : installments) {
+            ensureDueDateDoesNotExistInOtherInstallments(inst.getDueDate());
+        }
+
+        this.installments.addAll(installments);
+        this.updatedAt = LocalDateTime.now();
     }
 
     public void addInstallment(Money amountDue, LocalDate dueDate) {

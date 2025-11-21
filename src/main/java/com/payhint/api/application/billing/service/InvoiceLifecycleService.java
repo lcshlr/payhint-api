@@ -1,5 +1,7 @@
 package com.payhint.api.application.billing.service;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.UUID;
 
@@ -17,10 +19,13 @@ import com.payhint.api.application.billing.usecase.InvoiceLifecycleUseCase;
 import com.payhint.api.application.shared.exception.AlreadyExistsException;
 import com.payhint.api.application.shared.exception.NotFoundException;
 import com.payhint.api.application.shared.exception.PermissionDeniedException;
+import com.payhint.api.domain.billing.model.Installment;
 import com.payhint.api.domain.billing.model.Invoice;
 import com.payhint.api.domain.billing.repository.InvoiceRepository;
+import com.payhint.api.domain.billing.valueobject.InstallmentId;
 import com.payhint.api.domain.billing.valueobject.InvoiceId;
 import com.payhint.api.domain.billing.valueobject.InvoiceReference;
+import com.payhint.api.domain.billing.valueobject.Money;
 import com.payhint.api.domain.crm.model.Customer;
 import com.payhint.api.domain.crm.repository.CustomerRepository;
 import com.payhint.api.domain.crm.valueobject.CustomerId;
@@ -96,6 +101,17 @@ public class InvoiceLifecycleService implements InvoiceLifecycleUseCase {
 
         InvoiceId invoiceId = new InvoiceId(UUID.randomUUID());
         Invoice invoice = Invoice.create(invoiceId, customerId, invoiceReference, request.currency());
+
+        if (request.installments() != null && !request.installments().isEmpty()) {
+
+            List<Installment> installments = request.installments().stream().map(instReq -> {
+                Money amount = new Money(instReq.amountDue());
+                LocalDate dueDate = LocalDate.parse(instReq.dueDate(), DateTimeFormatter.ISO_LOCAL_DATE);
+                return Installment.create(new InstallmentId(UUID.randomUUID()), amount, dueDate);
+            }).toList();
+
+            invoice.addInstallments(installments);
+        }
 
         Invoice savedInvoice = invoiceRepository.save(invoice);
         logger.info("Invoice created successfully: " + invoiceReference.toString() + " for user ID " + userId);
