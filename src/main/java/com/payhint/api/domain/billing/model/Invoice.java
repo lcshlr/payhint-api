@@ -14,15 +14,16 @@ import com.payhint.api.domain.billing.valueobject.Money;
 import com.payhint.api.domain.crm.valueobject.CustomerId;
 import com.payhint.api.domain.shared.exception.InvalidPropertyException;
 
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NonNull;
 
+@Builder
 @Getter
 public class Invoice {
 
     private InvoiceId id;
 
-    @NonNull
     private CustomerId customerId;
 
     @NonNull
@@ -31,19 +32,20 @@ public class Invoice {
     @NonNull
     private String currency;
 
-    private boolean isArchived;
-
     @NonNull
     private LocalDateTime createdAt;
 
     @NonNull
     private LocalDateTime updatedAt;
 
+    private boolean isArchived;
+
+    @Builder.Default
     private List<Installment> installments = new ArrayList<>();
 
-    public Invoice(@NonNull InvoiceId id, @NonNull CustomerId customerId, @NonNull InvoiceReference invoiceReference,
+    public Invoice(@NonNull InvoiceId id, CustomerId customerId, @NonNull InvoiceReference invoiceReference,
             @NonNull String currency, @NonNull LocalDateTime createdAt, @NonNull LocalDateTime updatedAt,
-            boolean isArchived) {
+            boolean isArchived, List<Installment> installments) {
         if (id == null) {
             throw new InvalidPropertyException("InvoiceId cannot be null");
         }
@@ -54,11 +56,13 @@ public class Invoice {
         this.isArchived = isArchived;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
+        this.installments = installments != null ? new ArrayList<>(installments) : new ArrayList<>();
     }
 
     public static Invoice create(@NonNull InvoiceId id, @NonNull CustomerId customerId,
             @NonNull InvoiceReference invoiceReference, @NonNull String currency) {
-        return new Invoice(id, customerId, invoiceReference, currency, LocalDateTime.now(), LocalDateTime.now(), false);
+        return new Invoice(id, customerId, invoiceReference, currency, LocalDateTime.now(), LocalDateTime.now(), false,
+                new ArrayList<>());
     }
 
     public List<Installment> getInstallments() {

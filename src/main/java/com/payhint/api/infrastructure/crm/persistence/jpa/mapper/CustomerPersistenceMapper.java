@@ -13,7 +13,6 @@ public interface CustomerPersistenceMapper {
 
     @Mapping(target = "user", source = "userId")
     @Mapping(target = "invoices", ignore = true)
-    @Mapping(target = "new", ignore = true)
     CustomerJpaEntity toEntity(Customer customer);
 
     @Mapping(target = "userId", source = "user.id")
@@ -22,7 +21,6 @@ public interface CustomerPersistenceMapper {
     @Mapping(target = "user", source = "userId")
     @Mapping(target = "invoices", ignore = true)
     @Mapping(target = "id", ignore = true)
-    @Mapping(target = "new", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     void updateEntityFromDomain(Customer customer, @MappingTarget CustomerJpaEntity entity);
 }

@@ -7,6 +7,7 @@ import com.payhint.api.domain.billing.model.Invoice;
 import com.payhint.api.domain.billing.valueobject.InvoiceId;
 import com.payhint.api.domain.billing.valueobject.InvoiceReference;
 import com.payhint.api.domain.crm.valueobject.CustomerId;
+import com.payhint.api.domain.crm.valueobject.UserId;
 
 public interface InvoiceRepository {
 
@@ -14,15 +15,11 @@ public interface InvoiceRepository {
 
     Optional<Invoice> findById(InvoiceId id);
 
-    Optional<Invoice> findByIdWithInstallments(InvoiceId id);
-
-    Optional<Invoice> findByIdWithInstallmentsAndPayments(InvoiceId id);
-
     List<Invoice> findAllByCustomerId(CustomerId customerId);
 
-    List<Invoice> findAllWithInstallmentsAndPaymentsByCustomerId(CustomerId customerId);
-
     Optional<Invoice> findByCustomerIdAndInvoiceReference(CustomerId customerId, InvoiceReference invoiceReference);
+
+    Optional<Invoice> findByIdAndOwner(InvoiceId id, UserId userId);
 
     void deleteById(InvoiceId id);
 

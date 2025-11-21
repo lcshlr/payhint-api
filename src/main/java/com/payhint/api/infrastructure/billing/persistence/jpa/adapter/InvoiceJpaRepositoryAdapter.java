@@ -12,6 +12,7 @@ import com.payhint.api.domain.billing.repository.InvoiceRepository;
 import com.payhint.api.domain.billing.valueobject.InvoiceId;
 import com.payhint.api.domain.billing.valueobject.InvoiceReference;
 import com.payhint.api.domain.crm.valueobject.CustomerId;
+import com.payhint.api.domain.crm.valueobject.UserId;
 import com.payhint.api.infrastructure.billing.persistence.jpa.entity.InvoiceJpaEntity;
 import com.payhint.api.infrastructure.billing.persistence.jpa.mapper.InvoicePersistenceMapper;
 import com.payhint.api.infrastructure.billing.persistence.jpa.repository.InvoiceSpringRepository;
@@ -36,7 +37,7 @@ public class InvoiceJpaRepositoryAdapter implements InvoiceRepository {
 
         if (existingEntityOpt.isPresent()) {
             entityToSave = existingEntityOpt.get();
-            mapper.updateEntityFromDomain(invoice, entityToSave);
+            mapper.updateEntity(invoice, entityToSave);
         } else {
             entityToSave = mapper.toEntity(invoice);
 
@@ -46,7 +47,7 @@ public class InvoiceJpaRepositoryAdapter implements InvoiceRepository {
         }
 
         InvoiceJpaEntity saved = springDataInvoiceRepository.save(entityToSave);
-        return mapper.toDomainWithDetails(saved);
+        return mapper.toDomain(saved);
     }
 
     @Override
@@ -55,23 +56,6 @@ public class InvoiceJpaRepositoryAdapter implements InvoiceRepository {
             return Optional.empty();
         }
         return springDataInvoiceRepository.findById(id.value()).map(mapper::toDomain);
-    }
-
-    @Override
-    public Optional<Invoice> findByIdWithInstallments(@NonNull InvoiceId id) {
-        return springDataInvoiceRepository.findByIdWithInstallments(id.value()).map(mapper::toDomainWithDetails);
-    }
-
-    @Override
-    public Optional<Invoice> findByIdWithInstallmentsAndPayments(@NonNull InvoiceId id) {
-        return springDataInvoiceRepository.findByIdWithInstallmentsAndPayments(id.value())
-                .map(mapper::toDomainWithDetails);
-    }
-
-    @Override
-    public List<Invoice> findAllWithInstallmentsAndPaymentsByCustomerId(@NonNull CustomerId customerId) {
-        return springDataInvoiceRepository.findAllWithInstallmentsAndPaymentsByCustomerId(customerId.value()).stream()
-                .map(mapper::toDomainWithDetails).collect(Collectors.toList());
     }
 
     @Override
@@ -89,6 +73,11 @@ public class InvoiceJpaRepositoryAdapter implements InvoiceRepository {
         return springDataInvoiceRepository
                 .findByCustomerIdAndInvoiceReference(customerId.value(), invoiceReference.value())
                 .map(mapper::toDomain);
+    }
+
+    @Override
+    public Optional<Invoice> findByIdAndOwner(@NonNull InvoiceId id, @NonNull UserId userId) {
+        return springDataInvoiceRepository.findByIdAndOwner(id.value(), userId.value()).map(mapper::toDomain);
     }
 
     @Override

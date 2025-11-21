@@ -6,6 +6,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -37,7 +39,7 @@ public class InstallmentTest {
         void setup() {
                 VALID_INSTALLMENT = new Installment(VALID_INSTALLMENT_ID, VALID_INVOICE_ID,
                                 VALID_INVOICE_200_DUE_AMOUNT, VALID_INVOICE_DUE_DATE, LocalDateTime.now(),
-                                LocalDateTime.now());
+                                LocalDateTime.now(), new ArrayList<>());
                 VALID_PAYMENT_100_AMOUNT = new Payment(VALID_PAYMENT_ID, VALID_INSTALLMENT_ID, VALID_MONEY_100_AMOUNT,
                                 VALID_PAYMENT_DATE, LocalDateTime.now(), LocalDateTime.now());
         }
@@ -64,7 +66,7 @@ public class InstallmentTest {
                 void shouldCreateInstallmentWithAllParameters() {
                         Installment installment = new Installment(VALID_INSTALLMENT_ID, VALID_INVOICE_ID,
                                         VALID_INVOICE_200_DUE_AMOUNT, VALID_INVOICE_DUE_DATE, LocalDateTime.now(),
-                                        LocalDateTime.now());
+                                        LocalDateTime.now(), new ArrayList<>());
 
                         assertThat(installment.getId().toString()).isEqualTo(VALID_INSTALLMENT_ID.toString());
                         assertThat(installment.getInvoiceId().toString()).isEqualTo(VALID_INVOICE_ID.toString());
@@ -111,7 +113,7 @@ public class InstallmentTest {
                 void isPaidReturnsTrueWhenPaid() {
                         Installment installment = new Installment(VALID_INSTALLMENT_ID, VALID_INVOICE_ID,
                                         VALID_INVOICE_200_DUE_AMOUNT, VALID_INVOICE_DUE_DATE, LocalDateTime.now(),
-                                        LocalDateTime.now());
+                                        LocalDateTime.now(), new ArrayList<>());
                         Payment paid = new Payment(new PaymentId(UUID.randomUUID()), installment.getId(),
                                         VALID_INVOICE_200_DUE_AMOUNT, LocalDate.now(), LocalDateTime.now(),
                                         LocalDateTime.now());
@@ -134,7 +136,7 @@ public class InstallmentTest {
                 void remainingAmountCalculation() {
                         Installment installment = new Installment(VALID_INSTALLMENT_ID, VALID_INVOICE_ID,
                                         VALID_INVOICE_200_DUE_AMOUNT, VALID_INVOICE_DUE_DATE, LocalDateTime.now(),
-                                        LocalDateTime.now());
+                                        LocalDateTime.now(), new ArrayList<>());
                         Payment partial = new Payment(new PaymentId(UUID.randomUUID()), installment.getId(),
                                         VALID_MONEY_100_AMOUNT, LocalDate.now(), LocalDateTime.now(),
                                         LocalDateTime.now());
@@ -159,7 +161,7 @@ public class InstallmentTest {
                         InstallmentId instId = new InstallmentId(UUID.randomUUID());
                         Installment installment = new Installment(instId, VALID_INVOICE_ID,
                                         VALID_INVOICE_200_DUE_AMOUNT, VALID_INVOICE_DUE_DATE, LocalDateTime.now(),
-                                        LocalDateTime.now());
+                                        LocalDateTime.now(), new ArrayList<>());
 
                         Payment p1 = new Payment(new PaymentId(UUID.randomUUID()), installment.getId(),
                                         new Money(BigDecimal.valueOf(50.00)), LocalDate.now(),
@@ -242,7 +244,7 @@ public class InstallmentTest {
                         InstallmentId instId = new InstallmentId(UUID.randomUUID());
                         Installment installment = new Installment(instId, VALID_INVOICE_ID,
                                         VALID_INVOICE_200_DUE_AMOUNT, VALID_INVOICE_DUE_DATE, LocalDateTime.now(),
-                                        LocalDateTime.now());
+                                        LocalDateTime.now(), new ArrayList<>());
                         Payment p1 = new Payment(new PaymentId(UUID.randomUUID()), installment.getId(),
                                         new Money(BigDecimal.valueOf(100)), LocalDate.now(), LocalDateTime.now(),
                                         LocalDateTime.now());
@@ -269,7 +271,7 @@ public class InstallmentTest {
                         InstallmentId instId = new InstallmentId(UUID.randomUUID());
                         Installment installment = new Installment(instId, VALID_INVOICE_ID,
                                         VALID_INVOICE_200_DUE_AMOUNT, VALID_INVOICE_DUE_DATE, LocalDateTime.now(),
-                                        LocalDateTime.now());
+                                        LocalDateTime.now(), new ArrayList<>());
                         LocalDateTime initialUpdatedAt = installment.getUpdatedAt();
 
                         try {
@@ -289,7 +291,8 @@ public class InstallmentTest {
                 void updateDetailsThrowsWhenAmountLessThanPaid() {
                         InstallmentId id = new InstallmentId(UUID.randomUUID());
                         Installment inst = new Installment(id, VALID_INVOICE_ID, new Money(BigDecimal.valueOf(200)),
-                                        LocalDate.now().plusDays(5), LocalDateTime.now(), LocalDateTime.now());
+                                        LocalDate.now().plusDays(5), LocalDateTime.now(), LocalDateTime.now(),
+                                        new ArrayList<>());
 
                         Payment p = new Payment(new PaymentId(UUID.randomUUID()), inst.getId(),
                                         new Money(BigDecimal.valueOf(150)), LocalDate.now(), LocalDateTime.now(),
@@ -305,14 +308,15 @@ public class InstallmentTest {
                 void getPaymentsReturnsUnmodifiableCopy() {
                         InstallmentId id = new InstallmentId(UUID.randomUUID());
                         Installment inst = new Installment(id, VALID_INVOICE_ID, new Money(BigDecimal.valueOf(100)),
-                                        LocalDate.now().plusDays(5), LocalDateTime.now(), LocalDateTime.now());
+                                        LocalDate.now().plusDays(5), LocalDateTime.now(), LocalDateTime.now(),
+                                        new ArrayList<>());
 
                         Payment p = new Payment(new PaymentId(UUID.randomUUID()), inst.getId(),
                                         new Money(BigDecimal.valueOf(50)), LocalDate.now(), LocalDateTime.now(),
                                         LocalDateTime.now());
                         inst.addPayment(p);
 
-                        java.util.List<Payment> paymentsView = inst.getPayments();
+                        List<Payment> paymentsView = inst.getPayments();
                         assertThat(paymentsView).hasSize(1);
 
                         assertThatThrownBy(() -> paymentsView.add(p)).isInstanceOf(UnsupportedOperationException.class);
@@ -471,7 +475,8 @@ public class InstallmentTest {
                 void addPaymentDuplicateIdThrows() {
                         InstallmentId id = new InstallmentId(UUID.randomUUID());
                         Installment inst = new Installment(id, VALID_INVOICE_ID, new Money(BigDecimal.valueOf(200)),
-                                        LocalDate.now().plusDays(5), LocalDateTime.now(), LocalDateTime.now());
+                                        LocalDate.now().plusDays(5), LocalDateTime.now(), LocalDateTime.now(),
+                                        new ArrayList<>());
 
                         PaymentId pid = new PaymentId(UUID.randomUUID());
                         Payment p1 = new Payment(pid, inst.getId(), new Money(BigDecimal.valueOf(50)), LocalDate.now(),
@@ -491,7 +496,8 @@ public class InstallmentTest {
                 void updatePaymentExceedsInstallmentThrows() {
                         InstallmentId id = new InstallmentId(UUID.randomUUID());
                         Installment inst = new Installment(id, VALID_INVOICE_ID, new Money(BigDecimal.valueOf(200)),
-                                        LocalDate.now().plusDays(5), LocalDateTime.now(), LocalDateTime.now());
+                                        LocalDate.now().plusDays(5), LocalDateTime.now(), LocalDateTime.now(),
+                                        new ArrayList<>());
 
                         PaymentId pid = new PaymentId(UUID.randomUUID());
                         Payment p = new Payment(pid, inst.getId(), new Money(BigDecimal.valueOf(100)), LocalDate.now(),
@@ -556,7 +562,7 @@ public class InstallmentTest {
                                         new Money(BigDecimal.valueOf(100)), LocalDate.now());
                         Installment b = new Installment(VALID_INSTALLMENT_ID, VALID_INVOICE_ID,
                                         new Money(BigDecimal.valueOf(200)), LocalDate.now().plusDays(1),
-                                        LocalDateTime.now(), LocalDateTime.now());
+                                        LocalDateTime.now(), LocalDateTime.now(), new ArrayList<>());
 
                         Installment c = Installment.create(new InstallmentId(UUID.randomUUID()), VALID_INVOICE_ID,
                                         new Money(BigDecimal.valueOf(100)), LocalDate.now());

@@ -16,8 +16,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.payhint.api.application.billing.dto.response.InvoiceWithInstallmentsAndPaymentsResponse;
-import com.payhint.api.application.billing.usecase.InvoiceManagementUseCase;
+import com.payhint.api.application.billing.dto.response.InvoiceResponse;
+import com.payhint.api.application.billing.usecase.InvoiceLifecycleUseCase;
 import com.payhint.api.application.crm.dto.request.CreateCustomerRequest;
 import com.payhint.api.application.crm.dto.request.UpdateCustomerRequest;
 import com.payhint.api.application.crm.dto.response.CustomerResponse;
@@ -33,10 +33,10 @@ import jakarta.validation.Valid;
 public class CustomerController {
 
     private final CustomerManagementUseCase customerManagementUseCase;
-    private final InvoiceManagementUseCase invoiceManagementUseCase;
+    private final InvoiceLifecycleUseCase invoiceManagementUseCase;
 
     public CustomerController(CustomerManagementUseCase customerManagementUseCase,
-            InvoiceManagementUseCase invoiceManagementUseCase) {
+            InvoiceLifecycleUseCase invoiceManagementUseCase) {
         this.customerManagementUseCase = customerManagementUseCase;
         this.invoiceManagementUseCase = invoiceManagementUseCase;
     }
@@ -55,11 +55,11 @@ public class CustomerController {
     }
 
     @GetMapping("/{id}/invoices")
-    public List<InvoiceWithInstallmentsAndPaymentsResponse> getInvoicesByCustomerId(
-            @AuthenticationPrincipal UserPrincipal userPrincipal, @PathVariable String id) {
+    public List<InvoiceResponse> getInvoicesByCustomerId(@AuthenticationPrincipal UserPrincipal userPrincipal,
+            @PathVariable String id) {
         UserId userId = new UserId(userPrincipal.getId());
         CustomerId customerId = new CustomerId(UUID.fromString(id));
-        return invoiceManagementUseCase.listAllInvoicesWithDetailsByCustomer(userId, customerId);
+        return invoiceManagementUseCase.listInvoicesByCustomer(userId, customerId);
     }
 
     @PostMapping()

@@ -14,10 +14,12 @@ import com.payhint.api.domain.billing.valueobject.Money;
 import com.payhint.api.domain.billing.valueobject.PaymentId;
 import com.payhint.api.domain.shared.exception.InvalidPropertyException;
 
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NonNull;
 
 @Getter
+@Builder
 public class Installment {
 
     private InstallmentId id;
@@ -28,14 +30,15 @@ public class Installment {
     @NonNull
     private LocalDate dueDate;
     @NonNull
-    private List<Payment> payments = new ArrayList<>();
-    @NonNull
     private LocalDateTime createdAt;
     @NonNull
     private LocalDateTime updatedAt;
+    @Builder.Default
+    private List<Payment> payments = new ArrayList<>();
 
     public Installment(@NonNull InstallmentId id, InvoiceId invoiceId, @NonNull Money amountDue,
-            @NonNull LocalDate dueDate, @NonNull LocalDateTime createdAt, @NonNull LocalDateTime updatedAt) {
+            @NonNull LocalDate dueDate, @NonNull LocalDateTime createdAt, @NonNull LocalDateTime updatedAt,
+            List<Payment> payments) {
         if (id == null) {
             throw new InvalidPropertyException("InstallmentId cannot be null");
         }
@@ -45,11 +48,13 @@ public class Installment {
         this.dueDate = dueDate;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
+        this.payments = payments != null ? new ArrayList<>(payments) : new ArrayList<>();
     }
 
     public static Installment create(@NonNull InstallmentId id, @NonNull InvoiceId invoiceId, @NonNull Money amountDue,
             @NonNull LocalDate dueDate) {
-        return new Installment(id, invoiceId, amountDue, dueDate, LocalDateTime.now(), LocalDateTime.now());
+        return new Installment(id, invoiceId, amountDue, dueDate, LocalDateTime.now(), LocalDateTime.now(),
+                new ArrayList<>());
     }
 
     public boolean isPaid() {

@@ -15,8 +15,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.payhint.api.application.billing.dto.request.CreatePaymentRequest;
 import com.payhint.api.application.billing.dto.request.UpdatePaymentRequest;
-import com.payhint.api.application.billing.dto.response.InvoiceWithInstallmentsAndPaymentsResponse;
-import com.payhint.api.application.billing.usecase.PaymentManagementUseCase;
+import com.payhint.api.application.billing.dto.response.InvoiceResponse;
+import com.payhint.api.application.billing.usecase.PaymentProcessingUseCase;
 import com.payhint.api.domain.billing.valueobject.InstallmentId;
 import com.payhint.api.domain.billing.valueobject.InvoiceId;
 import com.payhint.api.domain.billing.valueobject.PaymentId;
@@ -29,15 +29,15 @@ import jakarta.validation.Valid;
 @RequestMapping("/api/invoices/{invoiceId}/installments/{installmentId}/payments")
 public class PaymentController {
 
-    private final PaymentManagementUseCase paymentManagementUseCase;
+    private final PaymentProcessingUseCase paymentManagementUseCase;
 
-    public PaymentController(PaymentManagementUseCase paymentManagementUseCase) {
+    public PaymentController(PaymentProcessingUseCase paymentManagementUseCase) {
         this.paymentManagementUseCase = paymentManagementUseCase;
     }
 
     @PostMapping()
     @ResponseStatus(HttpStatus.CREATED)
-    public InvoiceWithInstallmentsAndPaymentsResponse addPayment(@AuthenticationPrincipal UserPrincipal userPrincipal,
+    public InvoiceResponse addPayment(@AuthenticationPrincipal UserPrincipal userPrincipal,
             @Valid @RequestBody CreatePaymentRequest request, @PathVariable String invoiceId,
             @PathVariable String installmentId) {
         InvoiceId invoiceUUID = new InvoiceId(UUID.fromString(invoiceId));
@@ -47,9 +47,8 @@ public class PaymentController {
     }
 
     @PutMapping("{paymentId}")
-    public InvoiceWithInstallmentsAndPaymentsResponse updatePayment(
-            @AuthenticationPrincipal UserPrincipal userPrincipal, @PathVariable String invoiceId,
-            @PathVariable String installmentId, @PathVariable String paymentId,
+    public InvoiceResponse updatePayment(@AuthenticationPrincipal UserPrincipal userPrincipal,
+            @PathVariable String invoiceId, @PathVariable String installmentId, @PathVariable String paymentId,
             @Valid @RequestBody UpdatePaymentRequest request) {
         UserId userId = new UserId(userPrincipal.getId());
         InvoiceId invoiceUUID = new InvoiceId(UUID.fromString(invoiceId));
@@ -59,9 +58,8 @@ public class PaymentController {
     }
 
     @DeleteMapping("{paymentId}")
-    public InvoiceWithInstallmentsAndPaymentsResponse deletePayment(
-            @AuthenticationPrincipal UserPrincipal userPrincipal, @PathVariable String invoiceId,
-            @PathVariable String installmentId, @PathVariable String paymentId) {
+    public InvoiceResponse deletePayment(@AuthenticationPrincipal UserPrincipal userPrincipal,
+            @PathVariable String invoiceId, @PathVariable String installmentId, @PathVariable String paymentId) {
         UserId userId = new UserId(userPrincipal.getId());
         InvoiceId invoiceUUID = new InvoiceId(UUID.fromString(invoiceId));
         InstallmentId installmentUUID = new InstallmentId(UUID.fromString(installmentId));

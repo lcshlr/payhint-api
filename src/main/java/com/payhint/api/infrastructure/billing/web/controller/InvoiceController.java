@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.payhint.api.application.billing.dto.request.CreateInvoiceRequest;
 import com.payhint.api.application.billing.dto.request.UpdateInvoiceRequest;
 import com.payhint.api.application.billing.dto.response.InvoiceResponse;
-import com.payhint.api.application.billing.usecase.InvoiceManagementUseCase;
+import com.payhint.api.application.billing.usecase.InvoiceLifecycleUseCase;
 import com.payhint.api.domain.billing.valueobject.InvoiceId;
 import com.payhint.api.domain.crm.valueobject.UserId;
 import com.payhint.api.infrastructure.shared.security.UserPrincipal;
@@ -29,9 +29,9 @@ import jakarta.validation.Valid;
 @RequestMapping("/api/invoices")
 public class InvoiceController {
 
-    private final InvoiceManagementUseCase invoiceManagementUseCase;
+    private final InvoiceLifecycleUseCase invoiceManagementUseCase;
 
-    public InvoiceController(InvoiceManagementUseCase invoiceManagementUseCase) {
+    public InvoiceController(InvoiceLifecycleUseCase invoiceManagementUseCase) {
         this.invoiceManagementUseCase = invoiceManagementUseCase;
     }
 
