@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -111,6 +112,18 @@ public class GlobalExceptionHandler {
                 ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST,
                                 "Invalid argument");
                 problemDetail.setTitle("Invalid Input");
+                problemDetail.setInstance(URI.create(request.getRequestURI()));
+                problemDetail.setProperty("timestamp", Instant.now());
+                return problemDetail;
+        }
+
+        @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
+        public ProblemDetail handleOptimisticLockingFailure(ObjectOptimisticLockingFailureException ex,
+                        HttpServletRequest request) {
+                logger.warn("Optimistic locking failure: {}", ex.getMessage());
+                ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT,
+                                "Conflict occurred due to concurrent modification");
+                problemDetail.setTitle("Conflict");
                 problemDetail.setInstance(URI.create(request.getRequestURI()));
                 problemDetail.setProperty("timestamp", Instant.now());
                 return problemDetail;

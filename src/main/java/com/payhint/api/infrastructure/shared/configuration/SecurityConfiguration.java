@@ -16,6 +16,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 import com.payhint.api.infrastructure.shared.security.JwtAuthenticationFilter;
+import com.payhint.api.infrastructure.shared.security.RateLimitingFilter;
 
 import lombok.RequiredArgsConstructor;
 
@@ -26,6 +27,7 @@ import lombok.RequiredArgsConstructor;
 public class SecurityConfiguration {
 
         private final JwtAuthenticationFilter jwtAuthFilter;
+        private final RateLimitingFilter rateLimitingFilter;
         private final UserDetailsService userDetailsService;
 
         @Bean
@@ -36,7 +38,8 @@ public class SecurityConfiguration {
                                                 .authenticated())
                                 .sessionManagement(session -> session
                                                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+                                .addFilterBefore(rateLimitingFilter, UsernamePasswordAuthenticationFilter.class)
+                                .addFilterAfter(jwtAuthFilter, RateLimitingFilter.class);
 
                 return http.build();
         }

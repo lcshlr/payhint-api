@@ -6,15 +6,22 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.test.context.TestPropertySource;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import com.payhint.api.application.billing.dto.request.CreateInstallmentRequest;
 import com.payhint.api.application.billing.dto.request.CreatePaymentRequest;
@@ -44,9 +51,12 @@ import com.payhint.api.infrastructure.crm.persistence.jpa.repository.UserSpringR
                 "spring.datasource.driver-class-name=org.h2.Driver", "spring.datasource.username=sa",
                 "spring.datasource.password=", "spring.jpa.database-platform=org.hibernate.dialect.H2Dialect",
                 "spring.jpa.hibernate.ddl-auto=create-drop" })
-@Transactional
+
 @DisplayName("InvoiceService Integration Tests")
 class PaymentProcessingServiceIntegrationTest {
+
+        @Autowired
+        private TransactionTemplate transactionTemplate;
 
         @Autowired
         private InvoiceLifecycleService invoiceService;
@@ -76,10 +86,6 @@ class PaymentProcessingServiceIntegrationTest {
 
         @BeforeEach
         void setUp() {
-                invoiceSpringRepository.deleteAll();
-                customerSpringRepository.deleteAll();
-                userSpringRepository.deleteAll();
-
                 testUser = userRepository.register(User.create(new UserId(UUID.randomUUID()),
                                 new Email("testuser@example.com"), "encodedPassword", "Test", "User"));
 
@@ -91,6 +97,13 @@ class PaymentProcessingServiceIntegrationTest {
 
                 otherCustomer = customerRepository.save(Customer.create(new CustomerId(UUID.randomUUID()),
                                 otherUser.getId(), "Other Customer", new Email("othercustomer@example.com")));
+        }
+
+        @AfterEach
+        void tearDown() {
+                invoiceSpringRepository.deleteAll();
+                customerSpringRepository.deleteAll();
+                userSpringRepository.deleteAll();
         }
 
         @Nested
@@ -344,6 +357,65 @@ class PaymentProcessingServiceIntegrationTest {
                         assertThatThrownBy(() -> paymentService.recordPayment(testUser.getId(), invoice.getId(),
                                         new InstallmentId(UUID.fromString(installmentId)), pay2))
                                                         .isInstanceOf(InvalidMoneyValueException.class);
+                }
+        }
+
+        @Nested
+        @DisplayName("Concurrency Tests")
+        class ConcurrencyTests {
+
+                @Test
+                void shouldPreventDoublePaymentUnderConcurrentAccess() throws Exception {
+                        Invoice invoice = createTestInvoice(testCustomer.getId(), "INV-CONCURRENT");
+                        var inst = new CreateInstallmentRequest(new BigDecimal("100"),
+                                        LocalDate.now().plusDays(5).toString());
+                        var instResp = installmentService.addInstallment(testUser.getId(), invoice.getId(), inst);
+                        String installmentId = instResp.installments().get(0).id();
+
+                        ExecutorService executor = Executors.newFixedThreadPool(2);
+                        CountDownLatch startLatch = new CountDownLatch(1);
+                        CountDownLatch doneLatch = new CountDownLatch(2);
+
+                        AtomicInteger successCount = new AtomicInteger(0);
+                        AtomicInteger failureCount = new AtomicInteger(0);
+
+                        for (int i = 0; i < 2; i++) {
+                                executor.submit(() -> {
+                                        try {
+                                                startLatch.await();
+                                                var paymentRequest = new CreatePaymentRequest(new BigDecimal("60"),
+                                                                LocalDate.now().toString());
+                                                paymentService.recordPayment(testUser.getId(), invoice.getId(),
+                                                                new InstallmentId(UUID.fromString(installmentId)),
+                                                                paymentRequest);
+                                                successCount.incrementAndGet();
+                                        } catch (ObjectOptimisticLockingFailureException e) {
+                                                failureCount.incrementAndGet();
+                                        } catch (Exception e) {
+                                                throw new RuntimeException(
+                                                                "Unexpected exception during concurrent test", e);
+                                        } finally {
+                                                doneLatch.countDown();
+                                        }
+                                });
+                        }
+
+                        startLatch.countDown();
+                        boolean completed = doneLatch.await(5, TimeUnit.SECONDS);
+                        executor.shutdown();
+
+                        assertThat(completed).isTrue();
+                        assertThat(successCount.get()).isEqualTo(1);
+                        assertThat(failureCount.get()).isEqualTo(1);
+
+                        transactionTemplate.execute(status -> {
+                                Invoice reloadedInvoice = invoiceRepository.findById(invoice.getId()).orElseThrow();
+                                assertThat(reloadedInvoice.getTotalPaid().amount()).isEqualByComparingTo("60");
+                                assertThat(reloadedInvoice.getRemainingAmount().amount()).isEqualByComparingTo("40");
+                                assertThat(reloadedInvoice.getStatus().name()).isEqualTo("PARTIALLY_PAID");
+
+                                return null;
+                        });
                 }
         }
 

@@ -45,9 +45,11 @@ public class Invoice {
     @Builder.Default
     private List<Installment> installments = new ArrayList<>();
 
+    private Long version;
+
     public Invoice(@NonNull InvoiceId id, CustomerId customerId, @NonNull InvoiceReference invoiceReference,
             @NonNull String currency, @NonNull LocalDateTime createdAt, @NonNull LocalDateTime updatedAt,
-            boolean isArchived, List<Installment> installments) {
+            boolean isArchived, List<Installment> installments, Long version) {
         if (id == null) {
             throw new InvalidPropertyException("InvoiceId cannot be null");
         }
@@ -58,13 +60,14 @@ public class Invoice {
         this.isArchived = isArchived;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
+        this.version = version;
         this.installments = installments != null ? new ArrayList<>(installments) : new ArrayList<>();
     }
 
     public static Invoice create(@NonNull InvoiceId id, @NonNull CustomerId customerId,
             @NonNull InvoiceReference invoiceReference, @NonNull String currency) {
         return new Invoice(id, customerId, invoiceReference, currency, LocalDateTime.now(), LocalDateTime.now(), false,
-                new ArrayList<>());
+                new ArrayList<>(), null);
     }
 
     public List<Installment> getInstallments() {

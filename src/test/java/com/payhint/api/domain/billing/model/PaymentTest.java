@@ -12,14 +12,12 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-import com.payhint.api.domain.billing.valueobject.InstallmentId;
 import com.payhint.api.domain.billing.valueobject.Money;
 import com.payhint.api.domain.billing.valueobject.PaymentId;
 
 @DisplayName("Payment Domain Model Tests")
 public class PaymentTest {
     private static final PaymentId VALID_PAYMENT_ID = new PaymentId(UUID.randomUUID());
-    private static final InstallmentId VALID_INSTALLMENT_ID = new InstallmentId(UUID.randomUUID());
     private static final Money VALID_AMOUNT = new Money(BigDecimal.valueOf(100.00));
     private static final LocalDate VALID_PAYMENT_DATE = LocalDate.now();
 

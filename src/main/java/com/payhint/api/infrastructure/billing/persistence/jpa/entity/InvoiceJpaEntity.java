@@ -23,6 +23,7 @@ import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import jakarta.persistence.Transient;
 import jakarta.persistence.UniqueConstraint;
+import jakarta.persistence.Version;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
@@ -46,6 +47,9 @@ public class InvoiceJpaEntity implements Persistable<UUID> {
     @ToString.Include
     @EqualsAndHashCode.Include
     private UUID id;
+
+    @Version
+    private Long version;
 
     @Transient
     @Builder.Default

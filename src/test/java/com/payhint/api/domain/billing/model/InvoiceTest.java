@@ -42,7 +42,7 @@ public class InvoiceTest {
                 void shouldCreateInvoiceWithValidParameters() {
                         LocalDateTime now = LocalDateTime.now();
                         Invoice invoice = new Invoice(VALID_INVOICE_ID, VALID_CUSTOMER_ID, VALID_INVOICE_REFERENCE,
-                                        VALID_CURRENCY, now, now, false, new ArrayList<>());
+                                        VALID_CURRENCY, now, now, false, new ArrayList<>(), null);
 
                         assertThat(invoice.getId()).isEqualTo(VALID_INVOICE_ID);
                         assertThat(invoice.getCustomerId()).isEqualTo(VALID_CUSTOMER_ID);
@@ -58,7 +58,7 @@ public class InvoiceTest {
                 @DisplayName("Should throw exception when invoice reference is null")
                 void shouldThrowExceptionWhenInvoiceReferenceIsNull() {
                         assertThatThrownBy(() -> new Invoice(VALID_INVOICE_ID, VALID_CUSTOMER_ID, null, VALID_CURRENCY,
-                                        LocalDateTime.now(), LocalDateTime.now(), false, new ArrayList<>()))
+                                        LocalDateTime.now(), LocalDateTime.now(), false, new ArrayList<>(), null))
                                                         .isInstanceOf(NullPointerException.class)
                                                         .hasMessageContaining("invoiceReference");
                 }
@@ -68,7 +68,7 @@ public class InvoiceTest {
                 void shouldThrowExceptionWhenCurrencyIsNull() {
                         assertThatThrownBy(() -> new Invoice(VALID_INVOICE_ID, VALID_CUSTOMER_ID,
                                         VALID_INVOICE_REFERENCE, null, LocalDateTime.now(), LocalDateTime.now(), false,
-                                        new ArrayList<>())).isInstanceOf(NullPointerException.class)
+                                        new ArrayList<>(), null)).isInstanceOf(NullPointerException.class)
                                                         .hasMessageContaining("currency");
                 }
 
@@ -93,7 +93,7 @@ public class InvoiceTest {
                 void shouldInitializeInstallmentsAsEmptyList() {
                         Invoice invoice = new Invoice(VALID_INVOICE_ID, VALID_CUSTOMER_ID, VALID_INVOICE_REFERENCE,
                                         VALID_CURRENCY, LocalDateTime.now(), LocalDateTime.now(), false,
-                                        new ArrayList<>());
+                                        new ArrayList<>(), null);
 
                         assertThat(invoice.getInstallments()).isEmpty();
                 }
@@ -103,7 +103,7 @@ public class InvoiceTest {
                 void shouldSetIsArchivedToFalseByDefault() {
                         Invoice invoice = new Invoice(VALID_INVOICE_ID, VALID_CUSTOMER_ID, VALID_INVOICE_REFERENCE,
                                         VALID_CURRENCY, LocalDateTime.now(), LocalDateTime.now(), false,
-                                        new ArrayList<>());
+                                        new ArrayList<>(), null);
 
                         assertThat(invoice.isArchived()).isFalse();
                 }
@@ -114,7 +114,7 @@ public class InvoiceTest {
                         LocalDateTime before = LocalDateTime.now();
                         Invoice invoice = new Invoice(VALID_INVOICE_ID, VALID_CUSTOMER_ID, VALID_INVOICE_REFERENCE,
                                         VALID_CURRENCY, LocalDateTime.now(), LocalDateTime.now(), false,
-                                        new ArrayList<>());
+                                        new ArrayList<>(), null);
                         LocalDateTime after = LocalDateTime.now();
 
                         assertThat(invoice.getCreatedAt()).isAfterOrEqualTo(before).isBeforeOrEqualTo(after);
@@ -132,7 +132,7 @@ public class InvoiceTest {
                 void setUp() {
                         invoice = new Invoice(VALID_INVOICE_ID, VALID_CUSTOMER_ID, VALID_INVOICE_REFERENCE,
                                         VALID_CURRENCY, LocalDateTime.now(), LocalDateTime.now(), false,
-                                        new ArrayList<>());
+                                        new ArrayList<>(), null);
                 }
 
                 @Test
@@ -152,7 +152,7 @@ public class InvoiceTest {
                 void shouldThrowWhenAddingInstallmentToArchivedInvoice() {
                         Invoice archived = new Invoice(VALID_INVOICE_ID, VALID_CUSTOMER_ID, VALID_INVOICE_REFERENCE,
                                         VALID_CURRENCY, LocalDateTime.now(), LocalDateTime.now(), true,
-                                        new ArrayList<>());
+                                        new ArrayList<>(), null);
 
                         assertThatThrownBy(() -> archived.addInstallment(new Money(BigDecimal.valueOf(100.00)),
                                         LocalDate.now().plusDays(10))).isInstanceOf(IllegalStateException.class)
@@ -193,7 +193,7 @@ public class InvoiceTest {
                 void setUp() {
                         invoice = new Invoice(VALID_INVOICE_ID, VALID_CUSTOMER_ID, VALID_INVOICE_REFERENCE,
                                         VALID_CURRENCY, LocalDateTime.now(), LocalDateTime.now(), false,
-                                        new ArrayList<>());
+                                        new ArrayList<>(), null);
 
                         invoice.addInstallment(new Money(BigDecimal.valueOf(500.00)), LocalDate.now().plusDays(30));
                         existingInstallmentId = invoice.getInstallments().get(0).getId();
@@ -247,7 +247,7 @@ public class InvoiceTest {
                 void shouldThrowWhenUpdatingInstallmentOnArchivedInvoice() {
                         Invoice archived = new Invoice(VALID_INVOICE_ID, VALID_CUSTOMER_ID, VALID_INVOICE_REFERENCE,
                                         VALID_CURRENCY, LocalDateTime.now(), LocalDateTime.now(), true,
-                                        new ArrayList<>());
+                                        new ArrayList<>(), null);
 
                         assertThatThrownBy(() -> archived.updateInstallment(new InstallmentId(UUID.randomUUID()),
                                         new Money(BigDecimal.valueOf(150.00)), LocalDate.now().plusDays(10)))
@@ -267,7 +267,7 @@ public class InvoiceTest {
                 void setUp() {
                         invoice = new Invoice(VALID_INVOICE_ID, VALID_CUSTOMER_ID, VALID_INVOICE_REFERENCE,
                                         VALID_CURRENCY, LocalDateTime.now(), LocalDateTime.now(), false,
-                                        new ArrayList<>());
+                                        new ArrayList<>(), null);
 
                         invoice.addInstallment(new Money(BigDecimal.valueOf(500.00)), LocalDate.now().plusDays(30));
                         existingInstallmentId = invoice.getInstallments().get(0).getId();
@@ -304,7 +304,7 @@ public class InvoiceTest {
                 void shouldThrowWhenRemovingInstallmentFromArchivedInvoice() {
                         Invoice archived = new Invoice(VALID_INVOICE_ID, VALID_CUSTOMER_ID, VALID_INVOICE_REFERENCE,
                                         VALID_CURRENCY, LocalDateTime.now(), LocalDateTime.now(), true,
-                                        new ArrayList<>());
+                                        new ArrayList<>(), null);
 
                         assertThatThrownBy(() -> archived.removeInstallment(new InstallmentId(UUID.randomUUID())))
                                         .isInstanceOf(IllegalStateException.class).hasMessageContaining("archived");
@@ -322,7 +322,7 @@ public class InvoiceTest {
                 void setUp() {
                         invoice = new Invoice(VALID_INVOICE_ID, VALID_CUSTOMER_ID, VALID_INVOICE_REFERENCE,
                                         VALID_CURRENCY, LocalDateTime.now(), LocalDateTime.now(), false,
-                                        new ArrayList<>());
+                                        new ArrayList<>(), null);
 
                         invoice.addInstallment(new Money(BigDecimal.valueOf(500.00)), LocalDate.now().plusDays(30));
                         existingInstallmentId = invoice.getInstallments().get(0).getId();
@@ -372,7 +372,7 @@ public class InvoiceTest {
                 void shouldThrowWhenAddingPaymentToArchivedInvoice() {
                         Invoice archived = new Invoice(VALID_INVOICE_ID, VALID_CUSTOMER_ID, VALID_INVOICE_REFERENCE,
                                         VALID_CURRENCY, LocalDateTime.now(), LocalDateTime.now(), true,
-                                        new ArrayList<>());
+                                        new ArrayList<>(), null);
 
                         assertThatThrownBy(() -> archived.addPayment(new InstallmentId(UUID.randomUUID()),
                                         LocalDate.now(), new Money(BigDecimal.valueOf(200.00))))
@@ -393,7 +393,7 @@ public class InvoiceTest {
                 void setUp() {
                         invoice = new Invoice(VALID_INVOICE_ID, VALID_CUSTOMER_ID, VALID_INVOICE_REFERENCE,
                                         VALID_CURRENCY, LocalDateTime.now(), LocalDateTime.now(), false,
-                                        new ArrayList<>());
+                                        new ArrayList<>(), null);
 
                         invoice.addInstallment(new Money(BigDecimal.valueOf(500.00)), LocalDate.now().plusDays(30));
                         existingInstallmentId = invoice.getInstallments().get(0).getId();
@@ -440,7 +440,7 @@ public class InvoiceTest {
                 void shouldThrowWhenUpdatingPaymentOnArchivedInvoice() {
                         Invoice archived = new Invoice(VALID_INVOICE_ID, VALID_CUSTOMER_ID, VALID_INVOICE_REFERENCE,
                                         VALID_CURRENCY, LocalDateTime.now(), LocalDateTime.now(), true,
-                                        new ArrayList<>());
+                                        new ArrayList<>(), null);
                         assertThatThrownBy(() -> archived.updatePayment(existingInstallmentId, existingPaymentId,
                                         LocalDate.now().plusDays(1), new Money(BigDecimal.valueOf(250.00))))
                                                         .isInstanceOf(IllegalStateException.class)
@@ -460,7 +460,7 @@ public class InvoiceTest {
                 void setUp() {
                         invoice = new Invoice(VALID_INVOICE_ID, VALID_CUSTOMER_ID, VALID_INVOICE_REFERENCE,
                                         VALID_CURRENCY, LocalDateTime.now(), LocalDateTime.now(), false,
-                                        new ArrayList<>());
+                                        new ArrayList<>(), null);
 
                         invoice.addInstallment(new Money(BigDecimal.valueOf(500.00)), LocalDate.now().plusDays(30));
                         existingInstallmentId = invoice.getInstallments().get(0).getId();
@@ -505,7 +505,7 @@ public class InvoiceTest {
                 void shouldThrowWhenRemovingPaymentFromArchivedInvoice() {
                         Invoice archived = new Invoice(VALID_INVOICE_ID, VALID_CUSTOMER_ID, VALID_INVOICE_REFERENCE,
                                         VALID_CURRENCY, LocalDateTime.now(), LocalDateTime.now(), true,
-                                        new ArrayList<>());
+                                        new ArrayList<>(), null);
 
                         assertThatThrownBy(() -> archived.removePayment(existingInstallmentId, existingPaymentId))
                                         .isInstanceOf(IllegalStateException.class).hasMessageContaining("archived");
@@ -522,7 +522,7 @@ public class InvoiceTest {
                 void setUp() {
                         invoice = new Invoice(VALID_INVOICE_ID, VALID_CUSTOMER_ID, VALID_INVOICE_REFERENCE,
                                         VALID_CURRENCY, LocalDateTime.now(), LocalDateTime.now(), false,
-                                        new ArrayList<>());
+                                        new ArrayList<>(), null);
                 }
 
                 @Test
@@ -606,7 +606,7 @@ public class InvoiceTest {
                 void shouldArchiveInvoiceSuccessfully() {
                         Invoice invoice = new Invoice(VALID_INVOICE_ID, VALID_CUSTOMER_ID, VALID_INVOICE_REFERENCE,
                                         VALID_CURRENCY, LocalDateTime.now(), LocalDateTime.now(), false,
-                                        new ArrayList<>());
+                                        new ArrayList<>(), null);
 
                         invoice.archive();
 
@@ -618,7 +618,7 @@ public class InvoiceTest {
                 void shouldUnarchiveInvoiceSuccessfully() {
                         Invoice invoice = new Invoice(VALID_INVOICE_ID, VALID_CUSTOMER_ID, VALID_INVOICE_REFERENCE,
                                         VALID_CURRENCY, LocalDateTime.now(), LocalDateTime.now(), true,
-                                        new ArrayList<>());
+                                        new ArrayList<>(), null);
 
                         invoice.unArchive();
 
@@ -630,7 +630,7 @@ public class InvoiceTest {
                 void shouldThrowWhenModifyingArchivedInvoice() {
                         Invoice invoice = new Invoice(VALID_INVOICE_ID, VALID_CUSTOMER_ID, VALID_INVOICE_REFERENCE,
                                         VALID_CURRENCY, LocalDateTime.now(), LocalDateTime.now(), true,
-                                        new ArrayList<>());
+                                        new ArrayList<>(), null);
 
                         assertThatThrownBy(() -> invoice.addInstallment(new Money(BigDecimal.valueOf(100.00)),
                                         LocalDate.now().plusDays(10))).isInstanceOf(IllegalStateException.class)
@@ -648,7 +648,7 @@ public class InvoiceTest {
                 void setUp() {
                         invoice = new Invoice(VALID_INVOICE_ID, VALID_CUSTOMER_ID, VALID_INVOICE_REFERENCE,
                                         VALID_CURRENCY, LocalDateTime.now(), LocalDateTime.now(), false,
-                                        new ArrayList<>());
+                                        new ArrayList<>(), null);
                 }
 
                 @Test
@@ -690,7 +690,7 @@ public class InvoiceTest {
                 void setUp() {
                         invoice = new Invoice(VALID_INVOICE_ID, VALID_CUSTOMER_ID, VALID_INVOICE_REFERENCE,
                                         VALID_CURRENCY, LocalDateTime.now(), LocalDateTime.now(), false,
-                                        new ArrayList<>());
+                                        new ArrayList<>(), null);
                 }
 
                 @Test
@@ -726,7 +726,7 @@ public class InvoiceTest {
                 void setUp() {
                         invoice = new Invoice(VALID_INVOICE_ID, VALID_CUSTOMER_ID, VALID_INVOICE_REFERENCE,
                                         VALID_CURRENCY, LocalDateTime.now(), LocalDateTime.now(), false,
-                                        new ArrayList<>());
+                                        new ArrayList<>(), null);
                 }
 
                 @Test
@@ -800,7 +800,7 @@ public class InvoiceTest {
                 void shouldReturnImmutableCopyOfInstallments() {
                         Invoice invoice = new Invoice(VALID_INVOICE_ID, VALID_CUSTOMER_ID, VALID_INVOICE_REFERENCE,
                                         VALID_CURRENCY, LocalDateTime.now(), LocalDateTime.now(), false,
-                                        new ArrayList<>());
+                                        new ArrayList<>(), null);
 
                         invoice.addInstallment(new Money(BigDecimal.valueOf(500.00)), LocalDate.now().plusDays(30));
 
@@ -818,7 +818,7 @@ public class InvoiceTest {
                 void shouldNotAllowModificationOfInstallmentsList() {
                         Invoice invoice = new Invoice(VALID_INVOICE_ID, VALID_CUSTOMER_ID, VALID_INVOICE_REFERENCE,
                                         VALID_CURRENCY, LocalDateTime.now(), LocalDateTime.now(), false,
-                                        new ArrayList<>());
+                                        new ArrayList<>(), null);
 
                         List<Installment> installments = invoice.getInstallments();
 
@@ -886,7 +886,7 @@ public class InvoiceTest {
                 void shouldNotAllowAddingInstallmentWithNullIdToExistingInstallments() {
                         Invoice invoice = new Invoice(VALID_INVOICE_ID, VALID_CUSTOMER_ID, VALID_INVOICE_REFERENCE,
                                         VALID_CURRENCY, LocalDateTime.now(), LocalDateTime.now(), false,
-                                        new ArrayList<>());
+                                        new ArrayList<>(), null);
 
                         invoice.addInstallment(new Money(BigDecimal.valueOf(500.00)), LocalDate.now().plusDays(30));
 
@@ -900,7 +900,7 @@ public class InvoiceTest {
                 void shouldMaintainConsistencyWhenUpdatingInstallmentDueDate() {
                         Invoice invoice = new Invoice(VALID_INVOICE_ID, VALID_CUSTOMER_ID, VALID_INVOICE_REFERENCE,
                                         VALID_CURRENCY, LocalDateTime.now(), LocalDateTime.now(), false,
-                                        new ArrayList<>());
+                                        new ArrayList<>(), null);
 
                         invoice.addInstallment(new Money(BigDecimal.valueOf(500.00)), LocalDate.now().plusDays(30));
 
@@ -917,7 +917,7 @@ public class InvoiceTest {
                 void shouldCorrectlyCalculateTotalAmountWithMultipleInstallments() {
                         Invoice invoice = new Invoice(VALID_INVOICE_ID, VALID_CUSTOMER_ID, VALID_INVOICE_REFERENCE,
                                         VALID_CURRENCY, LocalDateTime.now(), LocalDateTime.now(), false,
-                                        new ArrayList<>());
+                                        new ArrayList<>(), null);
 
                         invoice.addInstallment(new Money(BigDecimal.valueOf(500.00)), LocalDate.now().plusDays(30));
 
@@ -931,7 +931,7 @@ public class InvoiceTest {
                 void shouldReturnZeroTotalAmountWhenNoInstallmentsExist() {
                         Invoice invoice = new Invoice(VALID_INVOICE_ID, VALID_CUSTOMER_ID, VALID_INVOICE_REFERENCE,
                                         VALID_CURRENCY, LocalDateTime.now(), LocalDateTime.now(), false,
-                                        new ArrayList<>());
+                                        new ArrayList<>(), null);
 
                         assertThat(invoice.getTotalAmount()).isEqualTo(Money.ZERO);
                 }
@@ -941,7 +941,7 @@ public class InvoiceTest {
                 void shouldPreventModificationAfterArchiving() {
                         Invoice invoice = new Invoice(VALID_INVOICE_ID, VALID_CUSTOMER_ID, VALID_INVOICE_REFERENCE,
                                         VALID_CURRENCY, LocalDateTime.now(), LocalDateTime.now(), false,
-                                        new ArrayList<>());
+                                        new ArrayList<>(), null);
 
                         invoice.archive();
 
@@ -955,7 +955,7 @@ public class InvoiceTest {
                 void shouldAllowModificationAfterUnarchiving() {
                         Invoice invoice = new Invoice(VALID_INVOICE_ID, VALID_CUSTOMER_ID, VALID_INVOICE_REFERENCE,
                                         VALID_CURRENCY, LocalDateTime.now(), LocalDateTime.now(), true,
-                                        new ArrayList<>());
+                                        new ArrayList<>(), null);
 
                         invoice.unArchive();
 
@@ -970,7 +970,7 @@ public class InvoiceTest {
                 void shouldCorrectlyComputePaymentStatusWithNoInstallments() {
                         Invoice invoice = new Invoice(VALID_INVOICE_ID, VALID_CUSTOMER_ID, VALID_INVOICE_REFERENCE,
                                         VALID_CURRENCY, LocalDateTime.now(), LocalDateTime.now(), false,
-                                        new ArrayList<>());
+                                        new ArrayList<>(), null);
 
                         assertThat(invoice.getStatus()).isEqualTo(PaymentStatus.PENDING);
                 }
@@ -980,7 +980,7 @@ public class InvoiceTest {
                 void shouldReturnCorrectRemainingAmountForInvoiceWithMultipleInstallmentsAndPayments() {
                         Invoice invoice = new Invoice(VALID_INVOICE_ID, VALID_CUSTOMER_ID, VALID_INVOICE_REFERENCE,
                                         VALID_CURRENCY, LocalDateTime.now(), LocalDateTime.now(), false,
-                                        new ArrayList<>());
+                                        new ArrayList<>(), null);
 
                         invoice.addInstallment(new Money(BigDecimal.valueOf(1000.00)), LocalDate.now().plusDays(30));
 
@@ -1000,7 +1000,7 @@ public class InvoiceTest {
                 void shouldFindInstallmentByIdSuccessfully() {
                         Invoice invoice = new Invoice(VALID_INVOICE_ID, VALID_CUSTOMER_ID, VALID_INVOICE_REFERENCE,
                                         VALID_CURRENCY, LocalDateTime.now(), LocalDateTime.now(), false,
-                                        new ArrayList<>());
+                                        new ArrayList<>(), null);
 
                         invoice.addInstallment(new Money(BigDecimal.valueOf(500.00)), LocalDate.now().plusDays(30));
 
@@ -1014,7 +1014,7 @@ public class InvoiceTest {
                 void shouldThrowExceptionWhenFindingNonExistentInstallment() {
                         Invoice invoice = new Invoice(VALID_INVOICE_ID, VALID_CUSTOMER_ID, VALID_INVOICE_REFERENCE,
                                         VALID_CURRENCY, LocalDateTime.now(), LocalDateTime.now(), false,
-                                        new ArrayList<>());
+                                        new ArrayList<>(), null);
 
                         InstallmentId nonExistentId = new InstallmentId(UUID.randomUUID());
 
@@ -1027,7 +1027,7 @@ public class InvoiceTest {
                 void shouldMaintainInstallmentOrderWhenAddingMultipleInstallments() {
                         Invoice invoice = new Invoice(VALID_INVOICE_ID, VALID_CUSTOMER_ID, VALID_INVOICE_REFERENCE,
                                         VALID_CURRENCY, LocalDateTime.now(), LocalDateTime.now(), false,
-                                        new ArrayList<>());
+                                        new ArrayList<>(), null);
 
                         invoice.addInstallment(new Money(BigDecimal.valueOf(500.00)), LocalDate.now().plusDays(30));
 
@@ -1043,7 +1043,7 @@ public class InvoiceTest {
                 void shouldCorrectlyIdentifyOverdueInvoiceWithMixedInstallments() {
                         Invoice invoice = new Invoice(VALID_INVOICE_ID, VALID_CUSTOMER_ID, VALID_INVOICE_REFERENCE,
                                         VALID_CURRENCY, LocalDateTime.now(), LocalDateTime.now(), false,
-                                        new ArrayList<>());
+                                        new ArrayList<>(), null);
 
                         invoice.addInstallment(new Money(BigDecimal.valueOf(500.00)), LocalDate.now().plusDays(30));
 
@@ -1057,7 +1057,7 @@ public class InvoiceTest {
                 void shouldComputeHashCodeWhenIdIsPresent() {
                         Invoice invoice = new Invoice(VALID_INVOICE_ID, VALID_CUSTOMER_ID, VALID_INVOICE_REFERENCE,
                                         VALID_CURRENCY, LocalDateTime.now(), LocalDateTime.now(), false,
-                                        new ArrayList<>());
+                                        new ArrayList<>(), null);
 
                         int hashCode1 = invoice.hashCode();
                         int hashCode2 = invoice.hashCode();
@@ -1070,7 +1070,7 @@ public class InvoiceTest {
                 void shouldNotUpdateDetailsIfSameValuesProvided() {
                         Invoice invoice = new Invoice(VALID_INVOICE_ID, VALID_CUSTOMER_ID, VALID_INVOICE_REFERENCE,
                                         VALID_CURRENCY, LocalDateTime.now(), LocalDateTime.now(), false,
-                                        new ArrayList<>());
+                                        new ArrayList<>(), null);
 
                         LocalDateTime originalUpdatedAt = invoice.getUpdatedAt();
 
@@ -1084,7 +1084,7 @@ public class InvoiceTest {
                 void shouldMaintainImmutabilityOfInstallmentsList() {
                         Invoice invoice = new Invoice(VALID_INVOICE_ID, VALID_CUSTOMER_ID, VALID_INVOICE_REFERENCE,
                                         VALID_CURRENCY, LocalDateTime.now(), LocalDateTime.now(), false,
-                                        new ArrayList<>());
+                                        new ArrayList<>(), null);
 
                         invoice.addInstallment(new Money(BigDecimal.valueOf(500.00)), LocalDate.now().plusDays(30));
 
@@ -1100,7 +1100,7 @@ public class InvoiceTest {
                 void shouldNotBeOverdueWhenAllInstallmentsAreInTheFuture() {
                         Invoice invoice = new Invoice(VALID_INVOICE_ID, VALID_CUSTOMER_ID, VALID_INVOICE_REFERENCE,
                                         VALID_CURRENCY, LocalDateTime.now(), LocalDateTime.now(), false,
-                                        new ArrayList<>());
+                                        new ArrayList<>(), null);
 
                         invoice.addInstallment(new Money(BigDecimal.valueOf(500.00)), LocalDate.now().plusDays(30));
 
@@ -1114,7 +1114,7 @@ public class InvoiceTest {
                 void shouldCorrectlyHandlePaymentStatusTransitionsFromPendingToPartiallyPaid() {
                         Invoice invoice = new Invoice(VALID_INVOICE_ID, VALID_CUSTOMER_ID, VALID_INVOICE_REFERENCE,
                                         VALID_CURRENCY, LocalDateTime.now(), LocalDateTime.now(), false,
-                                        new ArrayList<>());
+                                        new ArrayList<>(), null);
 
                         invoice.addInstallment(new Money(BigDecimal.valueOf(1000.00)), LocalDate.now().plusDays(30));
 
@@ -1131,7 +1131,7 @@ public class InvoiceTest {
                 void shouldCorrectlyHandlePaymentStatusTransitionsFromPartiallyPaidToPaid() {
                         Invoice invoice = new Invoice(VALID_INVOICE_ID, VALID_CUSTOMER_ID, VALID_INVOICE_REFERENCE,
                                         VALID_CURRENCY, LocalDateTime.now(), LocalDateTime.now(), false,
-                                        new ArrayList<>());
+                                        new ArrayList<>(), null);
 
                         invoice.addInstallment(new Money(BigDecimal.valueOf(1000.00)), LocalDate.now().plusDays(30));
 
@@ -1151,7 +1151,7 @@ public class InvoiceTest {
                 void shouldAllowAddingInstallmentWithSameDueDateAfterRemovingTheFirstOne() {
                         Invoice invoice = new Invoice(VALID_INVOICE_ID, VALID_CUSTOMER_ID, VALID_INVOICE_REFERENCE,
                                         VALID_CURRENCY, LocalDateTime.now(), LocalDateTime.now(), false,
-                                        new ArrayList<>());
+                                        new ArrayList<>(), null);
 
                         LocalDate dueDate = LocalDate.now().plusDays(30);
 
@@ -1170,7 +1170,7 @@ public class InvoiceTest {
                 void shouldUpdateInvoiceTimestampWhenAddingPaymentToInstallment() throws InterruptedException {
                         Invoice invoice = new Invoice(VALID_INVOICE_ID, VALID_CUSTOMER_ID, VALID_INVOICE_REFERENCE,
                                         VALID_CURRENCY, LocalDateTime.now(), LocalDateTime.now(), false,
-                                        new ArrayList<>());
+                                        new ArrayList<>(), null);
 
                         invoice.addInstallment(new Money(BigDecimal.valueOf(500.00)), LocalDate.now().plusDays(30));
 

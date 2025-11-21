@@ -31,6 +31,18 @@ application:
       secret: test-secret-key-for-jwt-token-generation-with-sufficient-length-to-meet-requirements-minimum-256-bits
       expiration: 86400000
 
+  rate-limiting:
+    enabled: true
+    auth-endpoints:
+      login:
+        capacity: 4
+        refill-tokens: 4
+        refill-duration: 60s
+      register:
+        capacity: 3
+        refill-tokens: 3
+        refill-duration: 3600s
+
 logging:
   level:
     "[com.payhint.api]": INFO

@@ -23,6 +23,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.payhint.api.application.crm.dto.request.LoginUserRequest;
 import com.payhint.api.application.crm.dto.request.RegisterUserRequest;
 import com.payhint.api.infrastructure.crm.persistence.jpa.repository.UserSpringRepository;
+import com.payhint.api.infrastructure.shared.security.RateLimitingFilter;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -40,9 +41,13 @@ class AuthenticationControllerIntegrationTest {
         @Autowired
         private UserSpringRepository userSpringRepository;
 
+        @Autowired
+        private RateLimitingFilter rateLimitingFilter;
+
         @BeforeEach
         void setUp() {
                 userSpringRepository.deleteAll();
+                rateLimitingFilter.clearBuckets();
         }
 
         @Nested
@@ -331,6 +336,7 @@ class AuthenticationControllerIntegrationTest {
                                                                 objectMapper.writeValueAsString(request))))
                                                 .andExpect(status().isCreated())
                                                 .andExpect(jsonPath("$.email").value(validEmails[i]));
+                                rateLimitingFilter.clearBuckets();
                         }
                 }
 
@@ -728,6 +734,164 @@ class AuthenticationControllerIntegrationTest {
                                         .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
                                         .content(Objects.requireNonNull(objectMapper.writeValueAsString(loginRequest))))
                                         .andExpect(status().isOk());
+                }
+        }
+
+        @Nested
+        @DisplayName("Rate Limiting")
+        class RateLimiting {
+                @Test
+                @DisplayName("Should block login requests after exceeding rate limit")
+                void shouldBlockLoginRequestsAfterExceedingRateLimit() throws Exception {
+                        RegisterUserRequest registerRequest = new RegisterUserRequest("rate.limit.test@example.com",
+                                        "SecurePass123", "Rate", "Test");
+
+                        mockMvc.perform(post("/api/auth/register")
+                                        .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
+                                        .content(Objects.requireNonNull(
+                                                        objectMapper.writeValueAsString(registerRequest)))
+                                        .with(request -> {
+                                                request.setRemoteAddr("192.168.1.100");
+                                                return request;
+                                        })).andExpect(status().isCreated());
+
+                        LoginUserRequest loginRequest = new LoginUserRequest("rate.limit.test@example.com",
+                                        "WrongPassword");
+
+                        for (int i = 0; i < 4; i++) {
+                                mockMvc.perform(post("/api/auth/login")
+                                                .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
+                                                .content(Objects.requireNonNull(
+                                                                objectMapper.writeValueAsString(loginRequest)))
+                                                .with(request -> {
+                                                        request.setRemoteAddr("192.168.1.100");
+                                                        return request;
+                                                }));
+                        }
+
+                        mockMvc.perform(post("/api/auth/login")
+                                        .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
+                                        .content(Objects.requireNonNull(objectMapper.writeValueAsString(loginRequest)))
+                                        .with(request -> {
+                                                request.setRemoteAddr("192.168.1.100");
+                                                return request;
+                                        })).andExpect(status().isTooManyRequests())
+                                        .andExpect(jsonPath("$.status").value(429))
+                                        .andExpect(jsonPath("$.title").value("Rate Limit Exceeded"))
+                                        .andExpect(jsonPath("$.detail")
+                                                        .value("Too many requests. Please try again later."))
+                                        .andExpect(jsonPath("$.instance").value("/api/auth/login"))
+                                        .andExpect(jsonPath("$.timestamp").isNotEmpty())
+                                        .andExpect(jsonPath("$.retryAfter").isNumber());
+                }
+
+                @Test
+                @DisplayName("Should block register requests after exceeding rate limit")
+                void shouldBlockRegisterRequestsAfterExceedingRateLimit() throws Exception {
+                        for (int i = 0; i < 3; i++) {
+                                RegisterUserRequest request = new RegisterUserRequest("user" + i + "@ratelimit.test",
+                                                "SecurePass123", "User", "Test" + i);
+
+                                mockMvc.perform(post("/api/auth/register")
+                                                .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
+                                                .content(Objects.requireNonNull(
+                                                                objectMapper.writeValueAsString(request)))
+                                                .with(req -> {
+                                                        req.setRemoteAddr("192.168.1.200");
+                                                        return req;
+                                                }));
+                        }
+
+                        RegisterUserRequest blockedRequest = new RegisterUserRequest("blocked@ratelimit.test",
+                                        "SecurePass123", "Blocked", "User");
+
+                        mockMvc.perform(post("/api/auth/register")
+                                        .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
+                                        .content(Objects.requireNonNull(
+                                                        objectMapper.writeValueAsString(blockedRequest)))
+                                        .with(req -> {
+                                                req.setRemoteAddr("192.168.1.200");
+                                                return req;
+                                        })).andExpect(status().isTooManyRequests())
+                                        .andExpect(jsonPath("$.status").value(429))
+                                        .andExpect(jsonPath("$.title").value("Rate Limit Exceeded"))
+                                        .andExpect(jsonPath("$.detail")
+                                                        .value("Too many requests. Please try again later."))
+                                        .andExpect(jsonPath("$.instance").value("/api/auth/register"))
+                                        .andExpect(jsonPath("$.timestamp").isNotEmpty())
+                                        .andExpect(jsonPath("$.retryAfter").isNumber());
+                }
+
+                @Test
+                @DisplayName("Should track rate limits separately for different IP addresses")
+                void shouldTrackRateLimitsSeparatelyForDifferentIPs() throws Exception {
+                        LoginUserRequest loginRequest = new LoginUserRequest("nonexistent@example.com",
+                                        "WrongPassword");
+
+                        for (int i = 0; i < 5; i++) {
+                                mockMvc.perform(post("/api/auth/login")
+                                                .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
+                                                .content(Objects.requireNonNull(
+                                                                objectMapper.writeValueAsString(loginRequest)))
+                                                .with(request -> {
+                                                        request.setRemoteAddr("192.168.1.1");
+                                                        return request;
+                                                }));
+                        }
+
+                        mockMvc.perform(post("/api/auth/login")
+                                        .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
+                                        .content(Objects.requireNonNull(objectMapper.writeValueAsString(loginRequest)))
+                                        .with(request -> {
+                                                request.setRemoteAddr("192.168.1.1");
+                                                return request;
+                                        })).andExpect(status().isTooManyRequests());
+
+                        mockMvc.perform(post("/api/auth/login")
+                                        .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
+                                        .content(Objects.requireNonNull(objectMapper.writeValueAsString(loginRequest)))
+                                        .with(request -> {
+                                                request.setRemoteAddr("192.168.1.2");
+                                                return request;
+                                        })).andExpect(status().isUnauthorized());
+                }
+
+                @Test
+                @DisplayName("Should not interfere between login and register rate limits")
+                void shouldNotInterfereBetweenLoginAndRegisterRateLimits() throws Exception {
+                        LoginUserRequest loginRequest = new LoginUserRequest("nonexistent@example.com",
+                                        "WrongPassword");
+
+                        for (int i = 0; i < 5; i++) {
+                                mockMvc.perform(post("/api/auth/login")
+                                                .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
+                                                .content(Objects.requireNonNull(
+                                                                objectMapper.writeValueAsString(loginRequest)))
+                                                .with(request -> {
+                                                        request.setRemoteAddr("192.168.1.50");
+                                                        return request;
+                                                }));
+                        }
+
+                        mockMvc.perform(post("/api/auth/login")
+                                        .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
+                                        .content(Objects.requireNonNull(objectMapper.writeValueAsString(loginRequest)))
+                                        .with(request -> {
+                                                request.setRemoteAddr("192.168.1.50");
+                                                return request;
+                                        })).andExpect(status().isTooManyRequests());
+
+                        RegisterUserRequest registerRequest = new RegisterUserRequest("independent@ratelimit.test",
+                                        "SecurePass123", "Independent", "User");
+
+                        mockMvc.perform(post("/api/auth/register")
+                                        .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
+                                        .content(Objects.requireNonNull(
+                                                        objectMapper.writeValueAsString(registerRequest)))
+                                        .with(req -> {
+                                                req.setRemoteAddr("192.168.1.50");
+                                                return req;
+                                        })).andExpect(status().isCreated());
                 }
         }
 }
