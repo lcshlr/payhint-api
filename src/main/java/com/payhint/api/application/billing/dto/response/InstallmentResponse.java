@@ -4,5 +4,5 @@ import java.math.BigDecimal;
 import java.util.List;
 
 public record InstallmentResponse(String id, BigDecimal amountDue, BigDecimal amountPaid, String dueDate, String status,
-        List<PaymentResponse> payments, String createdAt, String updatedAt) {
+                List<PaymentResponse> payments, String createdAt, String updatedAt) {
 }
