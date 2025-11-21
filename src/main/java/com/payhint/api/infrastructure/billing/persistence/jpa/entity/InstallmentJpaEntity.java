@@ -7,6 +7,7 @@ import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.UUID;
 
+import org.hibernate.annotations.BatchSize;
 import org.springframework.data.domain.Persistable;
 
 import jakarta.persistence.CascadeType;
@@ -69,6 +70,7 @@ public class InstallmentJpaEntity implements Persistable<UUID> {
     private LocalDateTime updatedAt;
 
     @OneToMany(mappedBy = "installment", cascade = CascadeType.ALL, orphanRemoval = true)
+    @BatchSize(size = 25)
     @Builder.Default
     private Set<PaymentJpaEntity> payments = new LinkedHashSet<>();
 

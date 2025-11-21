@@ -13,16 +13,16 @@ import com.payhint.api.infrastructure.billing.persistence.jpa.entity.InvoiceJpaE
 
 @Repository
 public interface InvoiceSpringRepository extends JpaRepository<InvoiceJpaEntity, UUID> {
-    @Query("select i from InvoiceJpaEntity i left join fetch i.installments inst left join fetch inst.payments where i.id = :id")
+    @Query("SELECT DISTINCT i FROM InvoiceJpaEntity i LEFT JOIN FETCH i.installments WHERE i.id = :id")
     @NonNull
     Optional<InvoiceJpaEntity> findById(@NonNull UUID id);
 
-    @Query("select i from InvoiceJpaEntity i left join fetch i.installments inst left join fetch inst.payments where i.customer.id = :customerId")
+    @Query("SELECT DISTINCT i FROM InvoiceJpaEntity i LEFT JOIN FETCH i.installments WHERE i.customer.id = :customerId")
     List<InvoiceJpaEntity> findAllByCustomerId(@NonNull UUID customerId);
 
     Optional<InvoiceJpaEntity> findByCustomerIdAndInvoiceReference(@NonNull UUID customerId,
             @NonNull String invoiceReference);
 
-    @Query("SELECT i FROM InvoiceJpaEntity i WHERE i.id = :invoiceId AND i.customer.user.id = :userId")
+    @Query("SELECT DISTINCT i FROM InvoiceJpaEntity i LEFT JOIN FETCH i.installments WHERE i.id = :invoiceId AND i.customer.user.id = :userId")
     Optional<InvoiceJpaEntity> findByIdAndOwner(@NonNull UUID invoiceId, @NonNull UUID userId);
 }
