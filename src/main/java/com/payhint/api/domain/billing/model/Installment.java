@@ -7,9 +7,7 @@ import java.util.List;
 import java.util.Optional;
 
 import com.payhint.api.domain.billing.exception.InvalidMoneyValueException;
-import com.payhint.api.domain.billing.exception.PaymentDoesNotBelongToInstallmentException;
 import com.payhint.api.domain.billing.valueobject.InstallmentId;
-import com.payhint.api.domain.billing.valueobject.InvoiceId;
 import com.payhint.api.domain.billing.valueobject.Money;
 import com.payhint.api.domain.billing.valueobject.PaymentId;
 import com.payhint.api.domain.shared.exception.InvalidPropertyException;
@@ -24,8 +22,6 @@ public class Installment {
 
     private InstallmentId id;
     @NonNull
-    private InvoiceId invoiceId;
-    @NonNull
     private Money amountDue;
     @NonNull
     private LocalDate dueDate;
@@ -36,14 +32,12 @@ public class Installment {
     @Builder.Default
     private List<Payment> payments = new ArrayList<>();
 
-    public Installment(@NonNull InstallmentId id, InvoiceId invoiceId, @NonNull Money amountDue,
-            @NonNull LocalDate dueDate, @NonNull LocalDateTime createdAt, @NonNull LocalDateTime updatedAt,
-            List<Payment> payments) {
+    public Installment(@NonNull InstallmentId id, @NonNull Money amountDue, @NonNull LocalDate dueDate,
+            @NonNull LocalDateTime createdAt, @NonNull LocalDateTime updatedAt, List<Payment> payments) {
         if (id == null) {
             throw new InvalidPropertyException("InstallmentId cannot be null");
         }
         this.id = id;
-        this.invoiceId = invoiceId;
         this.amountDue = amountDue;
         this.dueDate = dueDate;
         this.createdAt = createdAt;
@@ -51,10 +45,8 @@ public class Installment {
         this.payments = payments != null ? new ArrayList<>(payments) : new ArrayList<>();
     }
 
-    public static Installment create(@NonNull InstallmentId id, @NonNull InvoiceId invoiceId, @NonNull Money amountDue,
-            @NonNull LocalDate dueDate) {
-        return new Installment(id, invoiceId, amountDue, dueDate, LocalDateTime.now(), LocalDateTime.now(),
-                new ArrayList<>());
+    public static Installment create(@NonNull InstallmentId id, @NonNull Money amountDue, @NonNull LocalDate dueDate) {
+        return new Installment(id, amountDue, dueDate, LocalDateTime.now(), LocalDateTime.now(), new ArrayList<>());
     }
 
     public boolean isPaid() {
@@ -136,10 +128,6 @@ public class Installment {
     }
 
     public void addPayment(@NonNull Payment payment) {
-        if (payment.getInstallmentId() == null || !payment.getInstallmentId().equals(this.id)) {
-            throw new PaymentDoesNotBelongToInstallmentException(payment.getInstallmentId());
-        }
-
         if (this.payments.stream().anyMatch(pmt -> pmt.getId().equals(payment.getId()))) {
             throw new InvalidPropertyException(
                     "Payment with id " + payment.getId() + " already exists in the installment.");

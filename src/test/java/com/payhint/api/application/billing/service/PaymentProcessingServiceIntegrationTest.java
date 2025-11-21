@@ -169,7 +169,8 @@ class PaymentProcessingServiceIntegrationTest {
                                         new InstallmentId(UUID.fromString(installmentId)), paymentRequest);
                         String paymentId = paymentResponse.installments().get(0).payments().get(0).id();
 
-                        var updatePaymentRequest = new UpdatePaymentRequest(new BigDecimal("110"), null);
+                        var updatePaymentRequest = new UpdatePaymentRequest(new BigDecimal("110"),
+                                        LocalDate.now().toString());
                         assertThatThrownBy(() -> paymentService.updatePayment(testUser.getId(), invoice.getId(),
                                         new InstallmentId(UUID.fromString(installmentId)),
                                         new PaymentId(UUID.fromString(paymentId)), updatePaymentRequest))

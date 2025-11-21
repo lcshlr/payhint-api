@@ -16,7 +16,6 @@ public interface PaymentMapper {
 
     @Named("toPaymentResponse")
     @Mapping(source = "id", target = "id")
-    @Mapping(source = "installmentId", target = "installmentId")
     @Mapping(source = "amount", target = "amount")
     @Mapping(source = "paymentDate", target = "paymentDate")
     @Mapping(source = "createdAt", target = "createdAt")
@@ -28,7 +27,6 @@ public interface PaymentMapper {
     List<PaymentResponse> toResponseList(List<Payment> payments);
 
     @Mapping(target = "id", ignore = true)
-    @Mapping(target = "installmentId", ignore = true)
     @Mapping(source = "amount", target = "amount")
     @Mapping(source = "paymentDate", target = "paymentDate")
     @Mapping(target = "createdAt", ignore = true)

@@ -4,6 +4,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 import com.payhint.api.domain.billing.exception.InstallmentDoesNotBelongToInvoiceException;
 import com.payhint.api.domain.billing.exception.InvalidMoneyValueException;
@@ -11,6 +12,7 @@ import com.payhint.api.domain.billing.valueobject.InstallmentId;
 import com.payhint.api.domain.billing.valueobject.InvoiceId;
 import com.payhint.api.domain.billing.valueobject.InvoiceReference;
 import com.payhint.api.domain.billing.valueobject.Money;
+import com.payhint.api.domain.billing.valueobject.PaymentId;
 import com.payhint.api.domain.crm.valueobject.CustomerId;
 import com.payhint.api.domain.shared.exception.InvalidPropertyException;
 
@@ -67,12 +69,6 @@ public class Invoice {
 
     public List<Installment> getInstallments() {
         return this.installments == null ? List.of() : List.copyOf(installments);
-    }
-
-    private void validateInstallmentBelonging(Installment installment) {
-        if (installment.getInvoiceId() == null || !installment.getInvoiceId().equals(this.id)) {
-            throw new InstallmentDoesNotBelongToInvoiceException(installment.getId(), this.id);
-        }
     }
 
     private void ensureDueDateDoesNotExistInOtherInstallments(@NonNull LocalDate dueDate) {
@@ -155,56 +151,61 @@ public class Invoice {
                 .orElseThrow(() -> new InstallmentDoesNotBelongToInvoiceException(installmentId, this.id));
     }
 
-    public void addInstallment(@NonNull Installment installment) {
+    public void addInstallment(Money amountDue, LocalDate dueDate) {
+        InstallmentId installmentId = new InstallmentId(UUID.randomUUID());
         ensureNotArchived();
-        validateInstallmentBelonging(installment);
-        if (this.installments.stream().anyMatch(inst -> inst.getId().equals(installment.getId()))) {
+        if (this.installments.stream().anyMatch(inst -> inst.getId().equals(installmentId))) {
             throw new InvalidPropertyException(
-                    "Installment with id " + installment.getId() + " already exists in the invoice.");
+                    "Installment with id " + installmentId + " already exists in the invoice.");
         }
-        if (installment.getAmountDue().compareTo(Money.ZERO) <= 0) {
+        if (amountDue.compareTo(Money.ZERO) <= 0) {
             throw new InvalidMoneyValueException("Installment amountDue must be greater than zero");
         }
-        ensureDueDateDoesNotExistInOtherInstallments(installment.getDueDate());
+        ensureDueDateDoesNotExistInOtherInstallments(dueDate);
+        Installment installment = Installment.create(installmentId, amountDue, dueDate);
         this.installments.add(installment);
         this.updatedAt = LocalDateTime.now();
     }
 
-    public void updateInstallment(@NonNull Installment updatedInstallment) {
+    public void updateInstallment(@NonNull InstallmentId installmentId, Money amountDue, LocalDate dueDate) {
         ensureNotArchived();
-        Installment existingInstallment = findInstallmentById(updatedInstallment.getId());
+        Installment existingInstallment = findInstallmentById(installmentId);
+        Installment updatedInstallment = Installment.create(installmentId, amountDue, dueDate);
         ensureInstallmentCanBeUpdated(existingInstallment, updatedInstallment);
         existingInstallment.updateDetails(updatedInstallment.getAmountDue(), updatedInstallment.getDueDate());
         this.updatedAt = LocalDateTime.now();
     }
 
-    public void removeInstallment(@NonNull Installment installment) {
+    public void removeInstallment(@NonNull InstallmentId installmentId) {
         ensureNotArchived();
-        validateInstallmentBelonging(installment);
-        this.installments.remove(installment);
+        Installment installment = findInstallmentById(installmentId);
+        if (!this.installments.remove(installment)) {
+            throw new InstallmentDoesNotBelongToInvoiceException(installmentId, this.id);
+        }
         this.updatedAt = LocalDateTime.now();
     }
 
-    public void addPayment(@NonNull Installment installment, @NonNull Payment payment) {
+    public void addPayment(@NonNull InstallmentId installmentId, LocalDate paymentDate, Money amount) {
         ensureNotArchived();
-        validateInstallmentBelonging(installment);
-        Installment existingInstallment = findInstallmentById(installment.getId());
+        Installment existingInstallment = findInstallmentById(installmentId);
+        Payment payment = Payment.create(new PaymentId(UUID.randomUUID()), amount, paymentDate);
         existingInstallment.addPayment(payment);
         this.updatedAt = LocalDateTime.now();
     }
 
-    public void updatePayment(@NonNull Installment installment, @NonNull Payment updatedPayment) {
+    public void updatePayment(@NonNull InstallmentId installmentId, @NonNull PaymentId paymentId, LocalDate paymentDate,
+            Money amount) {
         ensureNotArchived();
-        validateInstallmentBelonging(installment);
-        Installment existingInstallment = findInstallmentById(installment.getId());
+        Installment existingInstallment = findInstallmentById(installmentId);
+        Payment updatedPayment = Payment.create(paymentId, amount, paymentDate);
         existingInstallment.updatePayment(updatedPayment);
         this.updatedAt = LocalDateTime.now();
     }
 
-    public void removePayment(@NonNull Installment installment, @NonNull Payment payment) {
+    public void removePayment(@NonNull InstallmentId installmentId, @NonNull PaymentId paymentId) {
         ensureNotArchived();
-        validateInstallmentBelonging(installment);
-        Installment existingInstallment = findInstallmentById(installment.getId());
+        Installment existingInstallment = findInstallmentById(installmentId);
+        Payment payment = existingInstallment.findPaymentById(paymentId);
         existingInstallment.removePayment(payment);
         this.updatedAt = LocalDateTime.now();
     }

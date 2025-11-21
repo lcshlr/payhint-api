@@ -2,7 +2,6 @@ package com.payhint.api.application.billing.service;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.UUID;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,7 +15,6 @@ import com.payhint.api.application.billing.mapper.InstallmentMapper;
 import com.payhint.api.application.billing.mapper.InvoiceMapper;
 import com.payhint.api.application.billing.usecase.InstallmentSchedulingUseCase;
 import com.payhint.api.application.shared.exception.NotFoundException;
-import com.payhint.api.domain.billing.model.Installment;
 import com.payhint.api.domain.billing.model.Invoice;
 import com.payhint.api.domain.billing.repository.InvoiceRepository;
 import com.payhint.api.domain.billing.valueobject.InstallmentId;
@@ -48,9 +46,7 @@ public class InstallmentSchedulingService implements InstallmentSchedulingUseCas
                 Money amountDue = new Money(request.amountDue());
                 LocalDate dueDate = LocalDate.parse(request.dueDate(), DateTimeFormatter.ISO_LOCAL_DATE);
 
-                InstallmentId installmentId = new InstallmentId(UUID.randomUUID());
-                Installment installment = Installment.create(installmentId, invoice.getId(), amountDue, dueDate);
-                invoice.addInstallment(installment);
+                invoice.addInstallment(amountDue, dueDate);
 
                 Invoice savedInvoice = invoiceRepository.save(invoice);
                 logger.info("Installment added to invoice: " + invoiceId.toString() + " for user ID " + userId);
@@ -66,22 +62,16 @@ public class InstallmentSchedulingService implements InstallmentSchedulingUseCas
                                 .orElseThrow(() -> new NotFoundException(
                                                 "Invoice with ID " + invoiceId + " not found for user ID " + userId));
 
-                Installment existingInstallment = invoice.findInstallmentById(installmentId);
-
                 LocalDate newDueDate = request.dueDate() != null
                                 ? LocalDate.parse(request.dueDate(), DateTimeFormatter.ISO_LOCAL_DATE)
-                                : existingInstallment.getDueDate();
-                Money newAmountDue = request.amountDue() != null ? new Money(request.amountDue())
-                                : existingInstallment.getAmountDue();
+                                : null;
+                Money newAmountDue = request.amountDue() != null ? new Money(request.amountDue()) : null;
 
-                Installment updatedInstallment = new Installment(existingInstallment.getId(), invoice.getId(),
-                                newAmountDue, newDueDate, existingInstallment.getCreatedAt(),
-                                existingInstallment.getUpdatedAt(), existingInstallment.getPayments());
-                invoice.updateInstallment(updatedInstallment);
+                invoice.updateInstallment(installmentId, newAmountDue, newDueDate);
 
                 Invoice savedInvoice = invoiceRepository.save(invoice);
-                logger.info("Installment updated in invoice: " + existingInstallment.getInvoiceId().toString()
-                                + " for user ID " + userId);
+                logger.info("Installment updated in invoice: " + invoiceId.toString() + " for user ID "
+                                + userId.toString());
                 return invoiceMapper.toInvoiceResponse(savedInvoice);
         }
 
@@ -89,16 +79,13 @@ public class InstallmentSchedulingService implements InstallmentSchedulingUseCas
         @Override
         public InvoiceResponse removeInstallment(UserId userId, InvoiceId invoiceId, InstallmentId installmentId) {
                 Invoice invoice = invoiceRepository.findByIdAndOwner(invoiceId, userId)
-                                .orElseThrow(() -> new NotFoundException(
-                                                "Invoice with ID " + invoiceId + " not found for user ID " + userId));
+                                .orElseThrow(() -> new NotFoundException("Invoice with ID " + invoiceId.toString()
+                                                + " not found for user ID " + userId.toString()));
 
-                Installment existingInstallment = invoice.findInstallmentById(installmentId);
-
-                invoice.removeInstallment(existingInstallment);
+                invoice.removeInstallment(installmentId);
 
                 Invoice savedInvoice = invoiceRepository.save(invoice);
-                logger.info("Installment removed from invoice: " + existingInstallment.getInvoiceId().toString()
-                                + " for user ID " + userId);
+                logger.info("Installment removed from invoice: " + invoiceId.toString() + " for user ID " + userId);
                 return invoiceMapper.toInvoiceResponse(savedInvoice);
         }
 

@@ -4,7 +4,6 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 import com.payhint.api.domain.billing.exception.InvalidMoneyValueException;
-import com.payhint.api.domain.billing.valueobject.InstallmentId;
 import com.payhint.api.domain.billing.valueobject.Money;
 import com.payhint.api.domain.billing.valueobject.PaymentId;
 
@@ -16,8 +15,6 @@ public class Payment {
 
     private PaymentId id;
     @NonNull
-    private InstallmentId installmentId;
-    @NonNull
     private Money amount;
     @NonNull
     private LocalDate paymentDate;
@@ -26,22 +23,20 @@ public class Payment {
     @NonNull
     private LocalDateTime updatedAt;
 
-    public Payment(@NonNull PaymentId id, @NonNull InstallmentId installmentId, @NonNull Money amount,
-            @NonNull LocalDate paymentDate, @NonNull LocalDateTime createdAt, @NonNull LocalDateTime updatedAt) {
+    public Payment(@NonNull PaymentId id, @NonNull Money amount, @NonNull LocalDate paymentDate,
+            @NonNull LocalDateTime createdAt, @NonNull LocalDateTime updatedAt) {
         if (id == null) {
             throw new com.payhint.api.domain.shared.exception.InvalidPropertyException("PaymentId cannot be null");
         }
         this.id = id;
-        this.installmentId = installmentId;
         this.amount = amount;
         this.paymentDate = paymentDate;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
     }
 
-    public static Payment create(@NonNull PaymentId id, @NonNull InstallmentId installmentId, @NonNull Money amount,
-            @NonNull LocalDate paymentDate) {
-        return new Payment(id, installmentId, amount, paymentDate, LocalDateTime.now(), LocalDateTime.now());
+    public static Payment create(@NonNull PaymentId id, @NonNull Money amount, @NonNull LocalDate paymentDate) {
+        return new Payment(id, amount, paymentDate, LocalDateTime.now(), LocalDateTime.now());
     }
 
     void updateDetails(Money amount, LocalDate paymentDate) {

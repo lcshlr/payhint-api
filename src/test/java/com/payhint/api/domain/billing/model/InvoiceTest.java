@@ -32,8 +32,6 @@ public class InvoiceTest {
         private static final String VALID_CURRENCY = "USD";
         private static final InvoiceId VALID_INVOICE_ID = new InvoiceId(UUID.randomUUID());
         private static final InstallmentId VALID_INSTALLMENT_ID = new InstallmentId(UUID.randomUUID());
-        private static final InstallmentId VALID_INSTALLMENT_ID_2 = new InstallmentId(UUID.randomUUID());
-        private static final PaymentId VALID_PAYMENT_ID = new PaymentId(UUID.randomUUID());
 
         @Nested
         @DisplayName("Constructor & Factory Tests")
@@ -129,55 +127,24 @@ public class InvoiceTest {
         class InstallmentManagementAddTests {
 
                 private Invoice invoice;
-                private Installment validInstallment;
 
                 @BeforeEach
                 void setUp() {
                         invoice = new Invoice(VALID_INVOICE_ID, VALID_CUSTOMER_ID, VALID_INVOICE_REFERENCE,
                                         VALID_CURRENCY, LocalDateTime.now(), LocalDateTime.now(), false,
                                         new ArrayList<>());
-
-                        validInstallment = Installment.create(VALID_INSTALLMENT_ID, VALID_INVOICE_ID,
-                                        new Money(BigDecimal.valueOf(500.00)), LocalDate.now().plusDays(30));
                 }
 
                 @Test
                 @DisplayName("Should add installment successfully")
                 void shouldAddInstallmentSuccessfully() {
-                        invoice.addInstallment(validInstallment);
+                        invoice.addInstallment(new Money(BigDecimal.valueOf(500.00)), LocalDate.now().plusDays(30));
 
                         assertThat(invoice.getInstallments()).hasSize(1);
-                        assertThat(invoice.getInstallments()).contains(validInstallment);
-                }
-
-                @Test
-                @DisplayName("Should throw exception when adding installment with different invoice id")
-                void shouldThrowExceptionWhenAddingInstallmentWithDifferentInvoiceId() {
-                        InvoiceId differentInvoiceId = new InvoiceId(UUID.randomUUID());
-                        Installment installmentWithDifferentInvoiceId = new Installment(
-                                        new InstallmentId(UUID.randomUUID()), differentInvoiceId,
-                                        new Money(BigDecimal.valueOf(500.00)), LocalDate.now().plusDays(30),
-                                        LocalDateTime.now(), LocalDateTime.now(), new ArrayList<>());
-
-                        assertThatThrownBy(() -> invoice.addInstallment(installmentWithDifferentInvoiceId))
-                                        .isInstanceOf(InstallmentDoesNotBelongToInvoiceException.class);
-                }
-
-                @Test
-                @DisplayName("Should throw exception when adding duplicate installment")
-                void shouldThrowExceptionWhenAddingDuplicateInstallment() {
-                        Installment inst1 = new Installment(VALID_INSTALLMENT_ID, VALID_INVOICE_ID,
-                                        new Money(BigDecimal.valueOf(500.00)), LocalDate.now().plusDays(30),
-                                        LocalDateTime.now(), LocalDateTime.now(), new ArrayList<>());
-                        invoice.addInstallment(inst1);
-
-                        Installment inst2 = new Installment(VALID_INSTALLMENT_ID, VALID_INVOICE_ID,
-                                        new Money(BigDecimal.valueOf(300.00)), LocalDate.now().plusDays(45),
-                                        LocalDateTime.now(), LocalDateTime.now(), new ArrayList<>());
-
-                        assertThatThrownBy(() -> invoice.addInstallment(inst2))
-                                        .isInstanceOf(InvalidPropertyException.class)
-                                        .hasMessageContaining("already exists");
+                        assertThat(invoice.getInstallments()).first().satisfies(installment -> {
+                                assertThat(installment.getAmountDue()).isEqualTo(new Money(BigDecimal.valueOf(500.00)));
+                                assertThat(installment.getDueDate()).isEqualTo(LocalDate.now().plusDays(30));
+                        });
                 }
 
                 @Test
@@ -187,31 +154,20 @@ public class InvoiceTest {
                                         VALID_CURRENCY, LocalDateTime.now(), LocalDateTime.now(), true,
                                         new ArrayList<>());
 
-                        Installment installment = new Installment(new InstallmentId(UUID.randomUUID()),
-                                        VALID_INVOICE_ID, new Money(BigDecimal.valueOf(100.00)),
-                                        LocalDate.now().plusDays(10), LocalDateTime.now(), LocalDateTime.now(),
-                                        new ArrayList<>());
-
-                        assertThatThrownBy(() -> archived.addInstallment(installment))
-                                        .isInstanceOf(IllegalStateException.class).hasMessageContaining("archived");
+                        assertThatThrownBy(() -> archived.addInstallment(new Money(BigDecimal.valueOf(100.00)),
+                                        LocalDate.now().plusDays(10))).isInstanceOf(IllegalStateException.class)
+                                                        .hasMessageContaining("archived");
                 }
 
                 @Test
                 @DisplayName("Should throw exception when adding installment with duplicate due date")
                 void shouldThrowExceptionWhenAddingInstallmentWithDuplicateDueDate() {
-                        Installment first = new Installment(new InstallmentId(UUID.randomUUID()), VALID_INVOICE_ID,
-                                        new Money(BigDecimal.valueOf(400.00)), LocalDate.now().plusDays(30),
-                                        LocalDateTime.now(), LocalDateTime.now(), new ArrayList<>());
 
-                        Installment duplicateDueDate = new Installment(new InstallmentId(UUID.randomUUID()),
-                                        VALID_INVOICE_ID, new Money(BigDecimal.valueOf(400.00)),
-                                        LocalDate.now().plusDays(30), LocalDateTime.now(), LocalDateTime.now(),
-                                        new ArrayList<>());
+                        invoice.addInstallment(new Money(BigDecimal.valueOf(400.00)), LocalDate.now().plusDays(30));
 
-                        invoice.addInstallment(first);
-
-                        assertThatThrownBy(() -> invoice.addInstallment(duplicateDueDate))
-                                        .isInstanceOf(InvalidPropertyException.class).hasMessageContaining("due date");
+                        assertThatThrownBy(() -> invoice.addInstallment(new Money(BigDecimal.valueOf(400.00)),
+                                        LocalDate.now().plusDays(30))).isInstanceOf(InvalidPropertyException.class)
+                                                        .hasMessageContaining("due date");
                 }
 
                 @Test
@@ -220,7 +176,7 @@ public class InvoiceTest {
                         LocalDateTime originalUpdatedAt = invoice.getUpdatedAt();
                         Thread.sleep(10);
 
-                        invoice.addInstallment(validInstallment);
+                        invoice.addInstallment(new Money(BigDecimal.valueOf(500.00)), LocalDate.now().plusDays(30));
 
                         assertThat(invoice.getUpdatedAt()).isAfter(originalUpdatedAt);
                 }
@@ -231,7 +187,7 @@ public class InvoiceTest {
         class InstallmentManagementUpdateTests {
 
                 private Invoice invoice;
-                private Installment existingInstallment;
+                private InstallmentId existingInstallmentId;
 
                 @BeforeEach
                 void setUp() {
@@ -239,21 +195,16 @@ public class InvoiceTest {
                                         VALID_CURRENCY, LocalDateTime.now(), LocalDateTime.now(), false,
                                         new ArrayList<>());
 
-                        existingInstallment = new Installment(VALID_INSTALLMENT_ID, VALID_INVOICE_ID,
-                                        new Money(BigDecimal.valueOf(500.00)), LocalDate.now().plusDays(30),
-                                        LocalDateTime.now(), LocalDateTime.now(), new ArrayList<>());
-
-                        invoice.addInstallment(existingInstallment);
+                        invoice.addInstallment(new Money(BigDecimal.valueOf(500.00)), LocalDate.now().plusDays(30));
+                        existingInstallmentId = invoice.getInstallments().get(0).getId();
                 }
 
                 @Test
                 @DisplayName("Should update installment successfully")
                 void shouldUpdateInstallmentSuccessfully() {
-                        Installment updatedInstallment = new Installment(existingInstallment.getId(), VALID_INVOICE_ID,
-                                        new Money(BigDecimal.valueOf(600.00)), LocalDate.now().plusDays(45),
-                                        LocalDateTime.now(), LocalDateTime.now(), new ArrayList<>());
 
-                        invoice.updateInstallment(updatedInstallment);
+                        invoice.updateInstallment(existingInstallmentId, new Money(BigDecimal.valueOf(600.00)),
+                                        LocalDate.now().plusDays(45));
 
                         Installment retrieved = invoice.getInstallments().get(0);
                         assertThat(retrieved.getAmountDue()).isEqualTo(new Money(BigDecimal.valueOf(600.00)));
@@ -263,32 +214,20 @@ public class InvoiceTest {
                 @Test
                 @DisplayName("Should throw exception when updating installment to duplicate due date")
                 void shouldThrowExceptionWhenUpdatingInstallmentToDuplicateDueDate() {
-                        Installment anotherInstallment = new Installment(new InstallmentId(UUID.randomUUID()),
-                                        VALID_INVOICE_ID, new Money(BigDecimal.valueOf(400.00)),
-                                        LocalDate.now().plusDays(45), LocalDateTime.now(), LocalDateTime.now(),
-                                        new ArrayList<>());
+                        invoice.addInstallment(new Money(BigDecimal.valueOf(400.00)), LocalDate.now().plusDays(45));
 
-                        invoice.addInstallment(anotherInstallment);
-
-                        Installment updatedInstallment = new Installment(existingInstallment.getId(), VALID_INVOICE_ID,
-                                        new Money(BigDecimal.valueOf(600.00)), anotherInstallment.getDueDate(),
-                                        LocalDateTime.now(), LocalDateTime.now(), new ArrayList<>());
-
-                        assertThatThrownBy(() -> invoice.updateInstallment(updatedInstallment))
-                                        .isInstanceOf(InvalidPropertyException.class)
-                                        .hasMessageContaining("already exists");
+                        assertThatThrownBy(() -> invoice.updateInstallment(existingInstallmentId,
+                                        new Money(BigDecimal.valueOf(600.00)), LocalDate.now().plusDays(45)))
+                                                        .isInstanceOf(InvalidPropertyException.class)
+                                                        .hasMessageContaining("already exists");
                 }
 
                 @Test
                 @DisplayName("Should throw exception when updating non existent installment")
                 void shouldThrowExceptionWhenUpdatingNonExistentInstallment() {
-                        Installment nonExistentInstallment = new Installment(new InstallmentId(UUID.randomUUID()),
-                                        VALID_INVOICE_ID, new Money(BigDecimal.valueOf(500.00)),
-                                        LocalDate.now().plusDays(30), LocalDateTime.now(), LocalDateTime.now(),
-                                        new ArrayList<>());
-
-                        assertThatThrownBy(() -> invoice.updateInstallment(nonExistentInstallment))
-                                        .isInstanceOf(InstallmentDoesNotBelongToInvoiceException.class);
+                        assertThatThrownBy(() -> invoice.updateInstallment(new InstallmentId(UUID.randomUUID()),
+                                        new Money(BigDecimal.valueOf(600.00)), LocalDate.now().plusDays(45)))
+                                                        .isInstanceOf(InstallmentDoesNotBelongToInvoiceException.class);
                 }
 
                 @Test
@@ -297,11 +236,8 @@ public class InvoiceTest {
                         LocalDateTime originalUpdatedAt = invoice.getUpdatedAt();
                         Thread.sleep(10);
 
-                        Installment updatedInstallment = new Installment(existingInstallment.getId(), VALID_INVOICE_ID,
-                                        new Money(BigDecimal.valueOf(600.00)), LocalDate.now().plusDays(45),
-                                        LocalDateTime.now(), LocalDateTime.now(), new ArrayList<>());
-
-                        invoice.updateInstallment(updatedInstallment);
+                        invoice.updateInstallment(existingInstallmentId, new Money(BigDecimal.valueOf(600.00)),
+                                        LocalDate.now().plusDays(45));
 
                         assertThat(invoice.getUpdatedAt()).isAfter(originalUpdatedAt);
                 }
@@ -313,17 +249,10 @@ public class InvoiceTest {
                                         VALID_CURRENCY, LocalDateTime.now(), LocalDateTime.now(), true,
                                         new ArrayList<>());
 
-                        Installment installment = new Installment(new InstallmentId(UUID.randomUUID()),
-                                        VALID_INVOICE_ID, new Money(BigDecimal.valueOf(100.00)),
-                                        LocalDate.now().plusDays(10), LocalDateTime.now(), LocalDateTime.now(),
-                                        new ArrayList<>());
-
-                        Installment updated = new Installment(installment.getId(), VALID_INVOICE_ID,
-                                        new Money(BigDecimal.valueOf(150.00)), installment.getDueDate(),
-                                        LocalDateTime.now(), LocalDateTime.now(), new ArrayList<>());
-
-                        assertThatThrownBy(() -> archived.updateInstallment(updated))
-                                        .isInstanceOf(IllegalStateException.class).hasMessageContaining("archived");
+                        assertThatThrownBy(() -> archived.updateInstallment(new InstallmentId(UUID.randomUUID()),
+                                        new Money(BigDecimal.valueOf(150.00)), LocalDate.now().plusDays(10)))
+                                                        .isInstanceOf(IllegalStateException.class)
+                                                        .hasMessageContaining("archived");
                 }
         }
 
@@ -332,7 +261,7 @@ public class InvoiceTest {
         class InstallmentManagementRemoveTests {
 
                 private Invoice invoice;
-                private Installment existingInstallment;
+                private InstallmentId existingInstallmentId;
 
                 @BeforeEach
                 void setUp() {
@@ -340,17 +269,14 @@ public class InvoiceTest {
                                         VALID_CURRENCY, LocalDateTime.now(), LocalDateTime.now(), false,
                                         new ArrayList<>());
 
-                        existingInstallment = new Installment(VALID_INSTALLMENT_ID, VALID_INVOICE_ID,
-                                        new Money(BigDecimal.valueOf(500.00)), LocalDate.now().plusDays(30),
-                                        LocalDateTime.now(), LocalDateTime.now(), new ArrayList<>());
-
-                        invoice.addInstallment(existingInstallment);
+                        invoice.addInstallment(new Money(BigDecimal.valueOf(500.00)), LocalDate.now().plusDays(30));
+                        existingInstallmentId = invoice.getInstallments().get(0).getId();
                 }
 
                 @Test
                 @DisplayName("Should remove installment successfully")
                 void shouldRemoveInstallmentSuccessfully() {
-                        invoice.removeInstallment(existingInstallment);
+                        invoice.removeInstallment(existingInstallmentId);
 
                         assertThat(invoice.getInstallments()).isEmpty();
                 }
@@ -358,13 +284,7 @@ public class InvoiceTest {
                 @Test
                 @DisplayName("Should throw exception when removing installment with different invoice id")
                 void shouldThrowExceptionWhenRemovingInstallmentWithDifferentInvoiceId() {
-                        InvoiceId differentInvoiceId = new InvoiceId(UUID.randomUUID());
-                        Installment installmentWithDifferentInvoiceId = new Installment(
-                                        new InstallmentId(UUID.randomUUID()), differentInvoiceId,
-                                        new Money(BigDecimal.valueOf(500.00)), LocalDate.now().plusDays(30),
-                                        LocalDateTime.now(), LocalDateTime.now(), new ArrayList<>());
-
-                        assertThatThrownBy(() -> invoice.removeInstallment(installmentWithDifferentInvoiceId))
+                        assertThatThrownBy(() -> invoice.removeInstallment(new InstallmentId(UUID.randomUUID())))
                                         .isInstanceOf(InstallmentDoesNotBelongToInvoiceException.class);
                 }
 
@@ -374,7 +294,7 @@ public class InvoiceTest {
                         LocalDateTime originalUpdatedAt = invoice.getUpdatedAt();
                         Thread.sleep(10);
 
-                        invoice.removeInstallment(existingInstallment);
+                        invoice.removeInstallment(existingInstallmentId);
 
                         assertThat(invoice.getUpdatedAt()).isAfter(originalUpdatedAt);
                 }
@@ -386,11 +306,7 @@ public class InvoiceTest {
                                         VALID_CURRENCY, LocalDateTime.now(), LocalDateTime.now(), true,
                                         new ArrayList<>());
 
-                        Installment installment = new Installment(VALID_INSTALLMENT_ID, VALID_INVOICE_ID,
-                                        new Money(BigDecimal.valueOf(500.00)), LocalDate.now().plusDays(30),
-                                        LocalDateTime.now(), LocalDateTime.now(), new ArrayList<>());
-
-                        assertThatThrownBy(() -> archived.removeInstallment(installment))
+                        assertThatThrownBy(() -> archived.removeInstallment(new InstallmentId(UUID.randomUUID())))
                                         .isInstanceOf(IllegalStateException.class).hasMessageContaining("archived");
                 }
         }
@@ -400,8 +316,7 @@ public class InvoiceTest {
         class PaymentManagementAddTests {
 
                 private Invoice invoice;
-                private Installment existingInstallment;
-                private Payment validPayment;
+                private InstallmentId existingInstallmentId;
 
                 @BeforeEach
                 void setUp() {
@@ -409,20 +324,15 @@ public class InvoiceTest {
                                         VALID_CURRENCY, LocalDateTime.now(), LocalDateTime.now(), false,
                                         new ArrayList<>());
 
-                        existingInstallment = new Installment(VALID_INSTALLMENT_ID, VALID_INVOICE_ID,
-                                        new Money(BigDecimal.valueOf(500.00)), LocalDate.now().plusDays(30),
-                                        LocalDateTime.now(), LocalDateTime.now(), new ArrayList<>());
-
-                        invoice.addInstallment(existingInstallment);
-
-                        validPayment = Payment.create(VALID_PAYMENT_ID, VALID_INSTALLMENT_ID,
-                                        new Money(BigDecimal.valueOf(200.00)), LocalDate.now());
+                        invoice.addInstallment(new Money(BigDecimal.valueOf(500.00)), LocalDate.now().plusDays(30));
+                        existingInstallmentId = invoice.getInstallments().get(0).getId();
                 }
 
                 @Test
                 @DisplayName("Should add payment to installment successfully")
                 void shouldAddPaymentToInstallmentSuccessfully() {
-                        invoice.addPayment(existingInstallment, validPayment);
+                        invoice.addPayment(existingInstallmentId, LocalDate.now(),
+                                        new Money(BigDecimal.valueOf(200.00)));
 
                         Installment retrieved = invoice.getInstallments().get(0);
                         assertThat(retrieved.getPayments()).hasSize(1);
@@ -431,26 +341,18 @@ public class InvoiceTest {
                 @Test
                 @DisplayName("Should throw exception when adding payment to installment with different invoice id")
                 void shouldThrowExceptionWhenAddingPaymentToInstallmentWithDifferentInvoiceId() {
-                        InvoiceId differentInvoiceId = new InvoiceId(UUID.randomUUID());
-                        Installment installmentWithDifferentInvoiceId = new Installment(
-                                        new InstallmentId(UUID.randomUUID()), differentInvoiceId,
-                                        new Money(BigDecimal.valueOf(500.00)), LocalDate.now().plusDays(30),
-                                        LocalDateTime.now(), LocalDateTime.now(), new ArrayList<>());
 
-                        assertThatThrownBy(() -> invoice.addPayment(installmentWithDifferentInvoiceId, validPayment))
-                                        .isInstanceOf(InstallmentDoesNotBelongToInvoiceException.class);
+                        assertThatThrownBy(() -> invoice.addPayment(new InstallmentId(UUID.randomUUID()),
+                                        LocalDate.now(), new Money(BigDecimal.valueOf(200.00))))
+                                                        .isInstanceOf(InstallmentDoesNotBelongToInvoiceException.class);
                 }
 
                 @Test
                 @DisplayName("Should throw exception when adding payment to non existent installment")
                 void shouldThrowExceptionWhenAddingPaymentToNonExistentInstallment() {
-                        Installment nonExistentInstallment = new Installment(new InstallmentId(UUID.randomUUID()),
-                                        VALID_INVOICE_ID, new Money(BigDecimal.valueOf(500.00)),
-                                        LocalDate.now().plusDays(30), LocalDateTime.now(), LocalDateTime.now(),
-                                        new ArrayList<>());
-
-                        assertThatThrownBy(() -> invoice.addPayment(nonExistentInstallment, validPayment))
-                                        .isInstanceOf(InstallmentDoesNotBelongToInvoiceException.class);
+                        assertThatThrownBy(() -> invoice.addPayment(new InstallmentId(UUID.randomUUID()),
+                                        LocalDate.now(), new Money(BigDecimal.valueOf(200.00))))
+                                                        .isInstanceOf(InstallmentDoesNotBelongToInvoiceException.class);
                 }
 
                 @Test
@@ -459,7 +361,8 @@ public class InvoiceTest {
                         LocalDateTime originalUpdatedAt = invoice.getUpdatedAt();
                         Thread.sleep(10);
 
-                        invoice.addPayment(existingInstallment, validPayment);
+                        invoice.addPayment(existingInstallmentId, LocalDate.now(),
+                                        new Money(BigDecimal.valueOf(200.00)));
 
                         assertThat(invoice.getUpdatedAt()).isAfter(originalUpdatedAt);
                 }
@@ -471,16 +374,10 @@ public class InvoiceTest {
                                         VALID_CURRENCY, LocalDateTime.now(), LocalDateTime.now(), true,
                                         new ArrayList<>());
 
-                        Installment installment = new Installment(VALID_INSTALLMENT_ID, VALID_INVOICE_ID,
-                                        new Money(BigDecimal.valueOf(500.00)), LocalDate.now().plusDays(30),
-                                        LocalDateTime.now(), LocalDateTime.now(), new ArrayList<>());
-
-                        Payment payment = new Payment(VALID_PAYMENT_ID, VALID_INSTALLMENT_ID,
-                                        new Money(BigDecimal.valueOf(200.00)), LocalDate.now(), LocalDateTime.now(),
-                                        LocalDateTime.now());
-
-                        assertThatThrownBy(() -> archived.addPayment(installment, payment))
-                                        .isInstanceOf(IllegalStateException.class).hasMessageContaining("archived");
+                        assertThatThrownBy(() -> archived.addPayment(new InstallmentId(UUID.randomUUID()),
+                                        LocalDate.now(), new Money(BigDecimal.valueOf(200.00))))
+                                                        .isInstanceOf(IllegalStateException.class)
+                                                        .hasMessageContaining("archived");
                 }
         }
 
@@ -489,8 +386,8 @@ public class InvoiceTest {
         class PaymentManagementUpdateTests {
 
                 private Invoice invoice;
-                private Installment existingInstallment;
-                private Payment existingPayment;
+                private InstallmentId existingInstallmentId;
+                private PaymentId existingPaymentId;
 
                 @BeforeEach
                 void setUp() {
@@ -498,65 +395,32 @@ public class InvoiceTest {
                                         VALID_CURRENCY, LocalDateTime.now(), LocalDateTime.now(), false,
                                         new ArrayList<>());
 
-                        existingInstallment = new Installment(VALID_INSTALLMENT_ID, VALID_INVOICE_ID,
-                                        new Money(BigDecimal.valueOf(500.00)), LocalDate.now().plusDays(30),
-                                        LocalDateTime.now(), LocalDateTime.now(), new ArrayList<>());
+                        invoice.addInstallment(new Money(BigDecimal.valueOf(500.00)), LocalDate.now().plusDays(30));
+                        existingInstallmentId = invoice.getInstallments().get(0).getId();
 
-                        invoice.addInstallment(existingInstallment);
-
-                        existingPayment = new Payment(VALID_PAYMENT_ID, VALID_INSTALLMENT_ID,
-                                        new Money(BigDecimal.valueOf(200.00)), LocalDate.now(), LocalDateTime.now(),
-                                        LocalDateTime.now());
-
-                        invoice.addPayment(existingInstallment, existingPayment);
+                        invoice.addPayment(existingInstallmentId, LocalDate.now(),
+                                        new Money(BigDecimal.valueOf(200.00)));
+                        existingPaymentId = invoice.getInstallments().get(0).getPayments().get(0).getId();
                 }
 
                 @Test
                 @DisplayName("Should update payment in installment successfully")
                 void shouldUpdatePaymentInInstallmentSuccessfully() {
-                        Payment updatedPayment = new Payment(existingPayment.getId(), VALID_INSTALLMENT_ID,
-                                        new Money(BigDecimal.valueOf(250.00)), LocalDate.now().plusDays(1),
-                                        LocalDateTime.now(), LocalDateTime.now());
-
-                        invoice.updatePayment(existingInstallment, updatedPayment);
-
+                        invoice.updatePayment(existingInstallmentId, existingPaymentId, LocalDate.now().plusDays(1),
+                                        new Money(BigDecimal.valueOf(250.00)));
                         Installment retrieved = invoice.getInstallments().get(0);
                         Payment retrievedPayment = retrieved.getPayments().get(0);
                         assertThat(retrievedPayment.getAmount()).isEqualTo(new Money(BigDecimal.valueOf(250.00)));
                 }
 
                 @Test
-                @DisplayName("Should throw exception when updating payment in installment with different invoice id")
-                void shouldThrowExceptionWhenUpdatingPaymentInInstallmentWithDifferentInvoiceId() {
-                        InvoiceId differentInvoiceId = new InvoiceId(UUID.randomUUID());
-                        Installment installmentWithDifferentInvoiceId = new Installment(
-                                        new InstallmentId(UUID.randomUUID()), differentInvoiceId,
-                                        new Money(BigDecimal.valueOf(500.00)), LocalDate.now().plusDays(30),
-                                        LocalDateTime.now(), LocalDateTime.now(), new ArrayList<>());
-
-                        Payment updatedPayment = new Payment(existingPayment.getId(), VALID_INSTALLMENT_ID,
-                                        new Money(BigDecimal.valueOf(250.00)), LocalDate.now().plusDays(1),
-                                        LocalDateTime.now(), LocalDateTime.now());
-
-                        assertThatThrownBy(
-                                        () -> invoice.updatePayment(installmentWithDifferentInvoiceId, updatedPayment))
-                                                        .isInstanceOf(InstallmentDoesNotBelongToInvoiceException.class);
-                }
-
-                @Test
                 @DisplayName("Should throw exception when updating payment in non existent installment")
                 void shouldThrowExceptionWhenUpdatingPaymentInNonExistentInstallment() {
-                        Installment nonExistentInstallment = new Installment(new InstallmentId(UUID.randomUUID()),
-                                        VALID_INVOICE_ID, new Money(BigDecimal.valueOf(500.00)),
-                                        LocalDate.now().plusDays(30), LocalDateTime.now(), LocalDateTime.now(),
-                                        new ArrayList<>());
 
-                        Payment updatedPayment = new Payment(existingPayment.getId(), VALID_INSTALLMENT_ID,
-                                        new Money(BigDecimal.valueOf(250.00)), LocalDate.now().plusDays(1),
-                                        LocalDateTime.now(), LocalDateTime.now());
-
-                        assertThatThrownBy(() -> invoice.updatePayment(nonExistentInstallment, updatedPayment))
-                                        .isInstanceOf(InstallmentDoesNotBelongToInvoiceException.class);
+                        assertThatThrownBy(() -> invoice.updatePayment(new InstallmentId(UUID.randomUUID()),
+                                        existingPaymentId, LocalDate.now().plusDays(1),
+                                        new Money(BigDecimal.valueOf(250.00))))
+                                                        .isInstanceOf(InstallmentDoesNotBelongToInvoiceException.class);
                 }
 
                 @Test
@@ -565,11 +429,8 @@ public class InvoiceTest {
                         LocalDateTime originalUpdatedAt = invoice.getUpdatedAt();
                         Thread.sleep(10);
 
-                        Payment updatedPayment = new Payment(existingPayment.getId(), VALID_INSTALLMENT_ID,
-                                        new Money(BigDecimal.valueOf(250.00)), LocalDate.now().plusDays(1),
-                                        LocalDateTime.now(), LocalDateTime.now());
-
-                        invoice.updatePayment(existingInstallment, updatedPayment);
+                        invoice.updatePayment(existingInstallmentId, existingPaymentId, LocalDate.now().plusDays(1),
+                                        new Money(BigDecimal.valueOf(250.00)));
 
                         assertThat(invoice.getUpdatedAt()).isAfter(originalUpdatedAt);
                 }
@@ -580,17 +441,10 @@ public class InvoiceTest {
                         Invoice archived = new Invoice(VALID_INVOICE_ID, VALID_CUSTOMER_ID, VALID_INVOICE_REFERENCE,
                                         VALID_CURRENCY, LocalDateTime.now(), LocalDateTime.now(), true,
                                         new ArrayList<>());
-
-                        Installment installment = new Installment(VALID_INSTALLMENT_ID, VALID_INVOICE_ID,
-                                        new Money(BigDecimal.valueOf(500.00)), LocalDate.now().plusDays(30),
-                                        LocalDateTime.now(), LocalDateTime.now(), new ArrayList<>());
-
-                        Payment updatedPayment = new Payment(VALID_PAYMENT_ID, VALID_INSTALLMENT_ID,
-                                        new Money(BigDecimal.valueOf(250.00)), LocalDate.now().plusDays(1),
-                                        LocalDateTime.now(), LocalDateTime.now());
-
-                        assertThatThrownBy(() -> archived.updatePayment(installment, updatedPayment))
-                                        .isInstanceOf(IllegalStateException.class).hasMessageContaining("archived");
+                        assertThatThrownBy(() -> archived.updatePayment(existingInstallmentId, existingPaymentId,
+                                        LocalDate.now().plusDays(1), new Money(BigDecimal.valueOf(250.00))))
+                                                        .isInstanceOf(IllegalStateException.class)
+                                                        .hasMessageContaining("archived");
                 }
         }
 
@@ -599,8 +453,8 @@ public class InvoiceTest {
         class PaymentManagementRemoveTests {
 
                 private Invoice invoice;
-                private Installment existingInstallment;
-                private Payment existingPayment;
+                private InstallmentId existingInstallmentId;
+                private PaymentId existingPaymentId;
 
                 @BeforeEach
                 void setUp() {
@@ -608,52 +462,31 @@ public class InvoiceTest {
                                         VALID_CURRENCY, LocalDateTime.now(), LocalDateTime.now(), false,
                                         new ArrayList<>());
 
-                        existingInstallment = new Installment(VALID_INSTALLMENT_ID, VALID_INVOICE_ID,
-                                        new Money(BigDecimal.valueOf(500.00)), LocalDate.now().plusDays(30),
-                                        LocalDateTime.now(), LocalDateTime.now(), new ArrayList<>());
+                        invoice.addInstallment(new Money(BigDecimal.valueOf(500.00)), LocalDate.now().plusDays(30));
+                        existingInstallmentId = invoice.getInstallments().get(0).getId();
 
-                        invoice.addInstallment(existingInstallment);
+                        invoice.addPayment(existingInstallmentId, LocalDate.now(),
+                                        new Money(BigDecimal.valueOf(200.00)));
 
-                        existingPayment = new Payment(VALID_PAYMENT_ID, VALID_INSTALLMENT_ID,
-                                        new Money(BigDecimal.valueOf(200.00)), LocalDate.now(), LocalDateTime.now(),
-                                        LocalDateTime.now());
-
-                        invoice.addPayment(existingInstallment, existingPayment);
+                        existingPaymentId = invoice.getInstallments().get(0).getPayments().get(0).getId();
                 }
 
                 @Test
                 @DisplayName("Should remove payment from installment successfully")
                 void shouldRemovePaymentFromInstallmentSuccessfully() {
-                        invoice.removePayment(existingInstallment, existingPayment);
+                        invoice.removePayment(existingInstallmentId, existingPaymentId);
 
                         Installment retrieved = invoice.getInstallments().get(0);
                         assertThat(retrieved.getPayments()).isEmpty();
                 }
 
                 @Test
-                @DisplayName("Should throw exception when removing payment from installment with different invoice id")
-                void shouldThrowExceptionWhenRemovingPaymentFromInstallmentWithDifferentInvoiceId() {
-                        InvoiceId differentInvoiceId = new InvoiceId(UUID.randomUUID());
-                        Installment installmentWithDifferentInvoiceId = new Installment(
-                                        new InstallmentId(UUID.randomUUID()), differentInvoiceId,
-                                        new Money(BigDecimal.valueOf(500.00)), LocalDate.now().plusDays(30),
-                                        LocalDateTime.now(), LocalDateTime.now(), new ArrayList<>());
-
-                        assertThatThrownBy(
-                                        () -> invoice.removePayment(installmentWithDifferentInvoiceId, existingPayment))
-                                                        .isInstanceOf(InstallmentDoesNotBelongToInvoiceException.class);
-                }
-
-                @Test
                 @DisplayName("Should throw exception when removing payment from non existent installment")
                 void shouldThrowExceptionWhenRemovingPaymentFromNonExistentInstallment() {
-                        Installment nonExistentInstallment = new Installment(new InstallmentId(UUID.randomUUID()),
-                                        VALID_INVOICE_ID, new Money(BigDecimal.valueOf(500.00)),
-                                        LocalDate.now().plusDays(30), LocalDateTime.now(), LocalDateTime.now(),
-                                        new ArrayList<>());
 
-                        assertThatThrownBy(() -> invoice.removePayment(nonExistentInstallment, existingPayment))
-                                        .isInstanceOf(InstallmentDoesNotBelongToInvoiceException.class);
+                        assertThatThrownBy(() -> invoice.removePayment(new InstallmentId(UUID.randomUUID()),
+                                        existingPaymentId))
+                                                        .isInstanceOf(InstallmentDoesNotBelongToInvoiceException.class);
                 }
 
                 @Test
@@ -662,7 +495,7 @@ public class InvoiceTest {
                         LocalDateTime originalUpdatedAt = invoice.getUpdatedAt();
                         Thread.sleep(10);
 
-                        invoice.removePayment(existingInstallment, existingPayment);
+                        invoice.removePayment(existingInstallmentId, existingPaymentId);
 
                         assertThat(invoice.getUpdatedAt()).isAfter(originalUpdatedAt);
                 }
@@ -674,15 +507,7 @@ public class InvoiceTest {
                                         VALID_CURRENCY, LocalDateTime.now(), LocalDateTime.now(), true,
                                         new ArrayList<>());
 
-                        Installment installment = new Installment(VALID_INSTALLMENT_ID, VALID_INVOICE_ID,
-                                        new Money(BigDecimal.valueOf(500.00)), LocalDate.now().plusDays(30),
-                                        LocalDateTime.now(), LocalDateTime.now(), new ArrayList<>());
-
-                        Payment payment = new Payment(VALID_PAYMENT_ID, VALID_INSTALLMENT_ID,
-                                        new Money(BigDecimal.valueOf(200.00)), LocalDate.now(), LocalDateTime.now(),
-                                        LocalDateTime.now());
-
-                        assertThatThrownBy(() -> archived.removePayment(installment, payment))
+                        assertThatThrownBy(() -> archived.removePayment(existingInstallmentId, existingPaymentId))
                                         .isInstanceOf(IllegalStateException.class).hasMessageContaining("archived");
                 }
         }
@@ -714,9 +539,7 @@ public class InvoiceTest {
                 @DisplayName("Should update total amount successfully")
                 void shouldUpdateTotalAmountSuccessfully() {
                         Money expectedAmount = new Money(BigDecimal.valueOf(1500.00));
-                        Installment inst = Installment.create(VALID_INSTALLMENT_ID, VALID_INVOICE_ID, expectedAmount,
-                                        LocalDate.now().plusDays(30));
-                        invoice.addInstallment(inst);
+                        invoice.addInstallment(expectedAmount, LocalDate.now().plusDays(30));
 
                         assertThat(invoice.getTotalAmount()).isEqualTo(expectedAmount);
                 }
@@ -809,13 +632,9 @@ public class InvoiceTest {
                                         VALID_CURRENCY, LocalDateTime.now(), LocalDateTime.now(), true,
                                         new ArrayList<>());
 
-                        Installment installment = new Installment(new InstallmentId(UUID.randomUUID()),
-                                        VALID_INVOICE_ID, new Money(BigDecimal.valueOf(100.00)),
-                                        LocalDate.now().plusDays(10), LocalDateTime.now(), LocalDateTime.now(),
-                                        new ArrayList<>());
-
-                        assertThatThrownBy(() -> invoice.addInstallment(installment))
-                                        .isInstanceOf(IllegalStateException.class).hasMessageContaining("archived");
+                        assertThatThrownBy(() -> invoice.addInstallment(new Money(BigDecimal.valueOf(100.00)),
+                                        LocalDate.now().plusDays(10))).isInstanceOf(IllegalStateException.class)
+                                                        .hasMessageContaining("archived");
                 }
         }
 
@@ -841,15 +660,10 @@ public class InvoiceTest {
                 @Test
                 @DisplayName("Should return partially paid status when partially paid")
                 void shouldReturnPartiallyPaidStatusWhenPartiallyPaid() {
-                        Installment installment = new Installment(VALID_INSTALLMENT_ID, VALID_INVOICE_ID,
-                                        new Money(BigDecimal.valueOf(1000.00)), LocalDate.now().plusDays(30),
-                                        LocalDateTime.now(), LocalDateTime.now(), new ArrayList<>());
-                        invoice.addInstallment(installment);
+                        invoice.addInstallment(new Money(BigDecimal.valueOf(1000.00)), LocalDate.now().plusDays(30));
 
-                        Payment payment = new Payment(VALID_PAYMENT_ID, VALID_INSTALLMENT_ID,
-                                        new Money(BigDecimal.valueOf(500.00)), LocalDate.now(), LocalDateTime.now(),
-                                        LocalDateTime.now());
-                        invoice.addPayment(installment, payment);
+                        invoice.addPayment(invoice.getInstallments().getFirst().getId(), LocalDate.now(),
+                                        new Money(BigDecimal.valueOf(500.00)));
 
                         assertThat(invoice.getStatus()).isEqualTo(PaymentStatus.PARTIALLY_PAID);
                 }
@@ -857,15 +671,10 @@ public class InvoiceTest {
                 @Test
                 @DisplayName("Should return paid status when fully paid")
                 void shouldReturnPaidStatusWhenFullyPaid() {
-                        Installment installment = new Installment(VALID_INSTALLMENT_ID, VALID_INVOICE_ID,
-                                        new Money(BigDecimal.valueOf(1000.00)), LocalDate.now().plusDays(30),
-                                        LocalDateTime.now(), LocalDateTime.now(), new ArrayList<>());
-                        invoice.addInstallment(installment);
+                        invoice.addInstallment(new Money(BigDecimal.valueOf(1000.00)), LocalDate.now().plusDays(30));
 
-                        Payment payment = new Payment(VALID_PAYMENT_ID, VALID_INSTALLMENT_ID,
-                                        new Money(BigDecimal.valueOf(1000.00)), LocalDate.now(), LocalDateTime.now(),
-                                        LocalDateTime.now());
-                        invoice.addPayment(installment, payment);
+                        invoice.addPayment(invoice.getInstallments().getFirst().getId(), LocalDate.now(),
+                                        new Money(BigDecimal.valueOf(1000.00)));
 
                         assertThat(invoice.getStatus()).isEqualTo(PaymentStatus.PAID);
                 }
@@ -887,10 +696,7 @@ public class InvoiceTest {
                 @Test
                 @DisplayName("Should return true when at least one installment is overdue")
                 void shouldReturnTrueWhenAtLeastOneInstallmentIsOverdue() {
-                        Installment overdueInstallment = new Installment(VALID_INSTALLMENT_ID, VALID_INVOICE_ID,
-                                        new Money(BigDecimal.valueOf(500.00)), LocalDate.now().minusDays(1),
-                                        LocalDateTime.now(), LocalDateTime.now(), new ArrayList<>());
-                        invoice.addInstallment(overdueInstallment);
+                        invoice.addInstallment(new Money(BigDecimal.valueOf(500.00)), LocalDate.now().minusDays(1));
 
                         assertThat(invoice.isOverdue()).isTrue();
                 }
@@ -898,10 +704,7 @@ public class InvoiceTest {
                 @Test
                 @DisplayName("Should return false when no installments are overdue")
                 void shouldReturnFalseWhenNoInstallmentsAreOverdue() {
-                        Installment futureInstallment = new Installment(VALID_INSTALLMENT_ID, VALID_INVOICE_ID,
-                                        new Money(BigDecimal.valueOf(500.00)), LocalDate.now().plusDays(30),
-                                        LocalDateTime.now(), LocalDateTime.now(), new ArrayList<>());
-                        invoice.addInstallment(futureInstallment);
+                        invoice.addInstallment(new Money(BigDecimal.valueOf(500.00)), LocalDate.now().plusDays(30));
 
                         assertThat(invoice.isOverdue()).isFalse();
                 }
@@ -930,35 +733,22 @@ public class InvoiceTest {
                 @DisplayName("Should calculate total amount correctly")
                 void shouldCalculateTotalAmountCorrectly() {
                         Money expectedAmount = new Money(BigDecimal.valueOf(1000));
-                        Installment inst = Installment.create(VALID_INSTALLMENT_ID, VALID_INVOICE_ID, expectedAmount,
-                                        LocalDate.now().plusDays(1));
-                        invoice.addInstallment(inst);
+                        invoice.addInstallment(expectedAmount, LocalDate.now().plusDays(1));
                         assertThat(invoice.getTotalAmount()).isEqualTo(expectedAmount);
                 }
 
                 @Test
                 @DisplayName("Should calculate total paid correctly")
                 void shouldCalculateTotalPaidCorrectly() {
-                        Installment installment1 = new Installment(VALID_INSTALLMENT_ID, VALID_INVOICE_ID,
-                                        new Money(BigDecimal.valueOf(500.00)), LocalDate.now().plusDays(30),
-                                        LocalDateTime.now(), LocalDateTime.now(), new ArrayList<>());
-                        invoice.addInstallment(installment1);
+                        invoice.addInstallment(new Money(BigDecimal.valueOf(500.00)), LocalDate.now().plusDays(30));
 
-                        Installment installment2 = new Installment(VALID_INSTALLMENT_ID_2, VALID_INVOICE_ID,
-                                        new Money(BigDecimal.valueOf(500.00)), LocalDate.now().plusDays(60),
-                                        LocalDateTime.now(), LocalDateTime.now(), new ArrayList<>());
-                        invoice.addInstallment(installment2);
+                        invoice.addInstallment(new Money(BigDecimal.valueOf(500.00)), LocalDate.now().plusDays(60));
 
-                        Payment payment1 = new Payment(VALID_PAYMENT_ID, VALID_INSTALLMENT_ID,
-                                        new Money(BigDecimal.valueOf(300.00)), LocalDate.now(), LocalDateTime.now(),
-                                        LocalDateTime.now());
-                        invoice.addPayment(installment1, payment1);
+                        invoice.addPayment(invoice.getInstallments().get(0).getId(), LocalDate.now(),
+                                        new Money(BigDecimal.valueOf(300.00)));
 
-                        Payment payment2 = new Payment(VALID_PAYMENT_ID, VALID_INSTALLMENT_ID_2,
-                                        new Money(BigDecimal.valueOf(200.00)), LocalDate.now(), LocalDateTime.now(),
-                                        LocalDateTime.now());
-                        invoice.addPayment(installment2, payment2);
-
+                        invoice.addPayment(invoice.getInstallments().get(1).getId(), LocalDate.now(),
+                                        new Money(BigDecimal.valueOf(200.00)));
                         assertThat(invoice.getTotalPaid()).isEqualTo(new Money(BigDecimal.valueOf(500.00)));
                 }
 
@@ -971,15 +761,9 @@ public class InvoiceTest {
                 @Test
                 @DisplayName("Should calculate remaining amount correctly")
                 void shouldCalculateRemainingAmountCorrectly() {
-                        Installment installment = new Installment(VALID_INSTALLMENT_ID, VALID_INVOICE_ID,
-                                        new Money(BigDecimal.valueOf(1000.00)), LocalDate.now().plusDays(30),
-                                        LocalDateTime.now(), LocalDateTime.now(), new ArrayList<>());
-                        invoice.addInstallment(installment);
-
-                        Payment payment = new Payment(VALID_PAYMENT_ID, VALID_INSTALLMENT_ID,
-                                        new Money(BigDecimal.valueOf(400.00)), LocalDate.now(), LocalDateTime.now(),
-                                        LocalDateTime.now());
-                        invoice.addPayment(installment, payment);
+                        invoice.addInstallment(new Money(BigDecimal.valueOf(1000.00)), LocalDate.now().plusDays(30));
+                        invoice.addPayment(invoice.getInstallments().get(0).getId(), LocalDate.now(),
+                                        new Money(BigDecimal.valueOf(400.00)));
 
                         assertThat(invoice.getRemainingAmount()).isEqualTo(new Money(BigDecimal.valueOf(600.00)));
                 }
@@ -987,15 +771,10 @@ public class InvoiceTest {
                 @Test
                 @DisplayName("Should return true when fully paid")
                 void shouldReturnTrueWhenFullyPaid() {
-                        Installment installment = new Installment(VALID_INSTALLMENT_ID, VALID_INVOICE_ID,
-                                        new Money(BigDecimal.valueOf(1000.00)), LocalDate.now().plusDays(30),
-                                        LocalDateTime.now(), LocalDateTime.now(), new ArrayList<>());
-                        invoice.addInstallment(installment);
+                        invoice.addInstallment(new Money(BigDecimal.valueOf(1000.00)), LocalDate.now().plusDays(30));
 
-                        Payment payment = new Payment(VALID_PAYMENT_ID, VALID_INSTALLMENT_ID,
-                                        new Money(BigDecimal.valueOf(1000.00)), LocalDate.now(), LocalDateTime.now(),
-                                        LocalDateTime.now());
-                        invoice.addPayment(installment, payment);
+                        invoice.addPayment(invoice.getInstallments().get(0).getId(), LocalDate.now(),
+                                        new Money(BigDecimal.valueOf(1000.00)));
 
                         assertThat(invoice.isFullyPaid()).isTrue();
                 }
@@ -1003,15 +782,10 @@ public class InvoiceTest {
                 @Test
                 @DisplayName("Should return false when not fully paid")
                 void shouldReturnFalseWhenNotFullyPaid() {
-                        Installment installment = new Installment(VALID_INSTALLMENT_ID, VALID_INVOICE_ID,
-                                        new Money(BigDecimal.valueOf(1000.00)), LocalDate.now().plusDays(30),
-                                        LocalDateTime.now(), LocalDateTime.now(), new ArrayList<>());
-                        invoice.addInstallment(installment);
+                        invoice.addInstallment(new Money(BigDecimal.valueOf(1000.00)), LocalDate.now().plusDays(30));
 
-                        Payment payment = new Payment(VALID_PAYMENT_ID, VALID_INSTALLMENT_ID,
-                                        new Money(BigDecimal.valueOf(500.00)), LocalDate.now(), LocalDateTime.now(),
-                                        LocalDateTime.now());
-                        invoice.addPayment(installment, payment);
+                        invoice.addPayment(invoice.getInstallments().get(0).getId(), LocalDate.now(),
+                                        new Money(BigDecimal.valueOf(500.00)));
 
                         assertThat(invoice.isFullyPaid()).isFalse();
                 }
@@ -1028,16 +802,15 @@ public class InvoiceTest {
                                         VALID_CURRENCY, LocalDateTime.now(), LocalDateTime.now(), false,
                                         new ArrayList<>());
 
-                        Installment installment = new Installment(VALID_INSTALLMENT_ID, VALID_INVOICE_ID,
-                                        new Money(BigDecimal.valueOf(500.00)), LocalDate.now().plusDays(30),
-                                        LocalDateTime.now(), LocalDateTime.now(), new ArrayList<>());
-                        invoice.addInstallment(installment);
+                        invoice.addInstallment(new Money(BigDecimal.valueOf(500.00)), LocalDate.now().plusDays(30));
 
                         List<Installment> installments = invoice.getInstallments();
 
                         assertThat(installments).hasSize(1);
-                        assertThatThrownBy(() -> installments.add(installment))
-                                        .isInstanceOf(UnsupportedOperationException.class);
+                        assertThatThrownBy(() -> installments.add(new Installment(VALID_INSTALLMENT_ID,
+                                        new Money(BigDecimal.valueOf(500.00)), LocalDate.now().plusDays(30),
+                                        LocalDateTime.now(), LocalDateTime.now(), new ArrayList<>())))
+                                                        .isInstanceOf(UnsupportedOperationException.class);
                 }
 
                 @Test
@@ -1049,7 +822,7 @@ public class InvoiceTest {
 
                         List<Installment> installments = invoice.getInstallments();
 
-                        Installment installment = new Installment(VALID_INSTALLMENT_ID, VALID_INVOICE_ID,
+                        Installment installment = new Installment(VALID_INSTALLMENT_ID,
                                         new Money(BigDecimal.valueOf(500.00)), LocalDate.now().plusDays(30),
                                         LocalDateTime.now(), LocalDateTime.now(), new ArrayList<>());
 
@@ -1115,15 +888,9 @@ public class InvoiceTest {
                                         VALID_CURRENCY, LocalDateTime.now(), LocalDateTime.now(), false,
                                         new ArrayList<>());
 
-                        Installment installment1 = new Installment(VALID_INSTALLMENT_ID, VALID_INVOICE_ID,
-                                        new Money(BigDecimal.valueOf(500.00)), LocalDate.now().plusDays(30),
-                                        LocalDateTime.now(), LocalDateTime.now(), new ArrayList<>());
-                        invoice.addInstallment(installment1);
+                        invoice.addInstallment(new Money(BigDecimal.valueOf(500.00)), LocalDate.now().plusDays(30));
 
-                        Installment installment2 = Installment.create(VALID_INSTALLMENT_ID_2, VALID_INVOICE_ID,
-                                        new Money(BigDecimal.valueOf(300.00)), LocalDate.now().plusDays(60));
-
-                        invoice.addInstallment(installment2);
+                        invoice.addInstallment(new Money(BigDecimal.valueOf(300.00)), LocalDate.now().plusDays(60));
 
                         assertThat(invoice.getInstallments()).hasSize(2);
                 }
@@ -1135,17 +902,12 @@ public class InvoiceTest {
                                         VALID_CURRENCY, LocalDateTime.now(), LocalDateTime.now(), false,
                                         new ArrayList<>());
 
-                        Installment installment = new Installment(VALID_INSTALLMENT_ID, VALID_INVOICE_ID,
-                                        new Money(BigDecimal.valueOf(500.00)), LocalDate.now().plusDays(30),
-                                        LocalDateTime.now(), LocalDateTime.now(), new ArrayList<>());
-                        invoice.addInstallment(installment);
+                        invoice.addInstallment(new Money(BigDecimal.valueOf(500.00)), LocalDate.now().plusDays(30));
 
                         LocalDate newDueDate = LocalDate.now().plusDays(45);
-                        Installment updated = new Installment(VALID_INSTALLMENT_ID, VALID_INVOICE_ID,
-                                        new Money(BigDecimal.valueOf(500.00)), newDueDate, LocalDateTime.now(),
-                                        LocalDateTime.now(), new ArrayList<>());
 
-                        invoice.updateInstallment(updated);
+                        invoice.updateInstallment(invoice.getInstallments().get(0).getId(),
+                                        new Money(BigDecimal.valueOf(500.00)), newDueDate);
 
                         assertThat(invoice.getInstallments().get(0).getDueDate()).isEqualTo(newDueDate);
                 }
@@ -1157,15 +919,9 @@ public class InvoiceTest {
                                         VALID_CURRENCY, LocalDateTime.now(), LocalDateTime.now(), false,
                                         new ArrayList<>());
 
-                        Installment installment1 = new Installment(VALID_INSTALLMENT_ID, VALID_INVOICE_ID,
-                                        new Money(BigDecimal.valueOf(500.00)), LocalDate.now().plusDays(30),
-                                        LocalDateTime.now(), LocalDateTime.now(), new ArrayList<>());
-                        invoice.addInstallment(installment1);
+                        invoice.addInstallment(new Money(BigDecimal.valueOf(500.00)), LocalDate.now().plusDays(30));
 
-                        Installment installment2 = new Installment(VALID_INSTALLMENT_ID_2, VALID_INVOICE_ID,
-                                        new Money(BigDecimal.valueOf(300.00)), LocalDate.now().plusDays(60),
-                                        LocalDateTime.now(), LocalDateTime.now(), new ArrayList<>());
-                        invoice.addInstallment(installment2);
+                        invoice.addInstallment(new Money(BigDecimal.valueOf(300.00)), LocalDate.now().plusDays(60));
 
                         assertThat(invoice.getTotalAmount()).isEqualTo(new Money(BigDecimal.valueOf(800.00)));
                 }
@@ -1226,25 +982,15 @@ public class InvoiceTest {
                                         VALID_CURRENCY, LocalDateTime.now(), LocalDateTime.now(), false,
                                         new ArrayList<>());
 
-                        Installment installment1 = new Installment(VALID_INSTALLMENT_ID, VALID_INVOICE_ID,
-                                        new Money(BigDecimal.valueOf(1000.00)), LocalDate.now().plusDays(30),
-                                        LocalDateTime.now(), LocalDateTime.now(), new ArrayList<>());
-                        invoice.addInstallment(installment1);
+                        invoice.addInstallment(new Money(BigDecimal.valueOf(1000.00)), LocalDate.now().plusDays(30));
 
-                        Installment installment2 = new Installment(VALID_INSTALLMENT_ID_2, VALID_INVOICE_ID,
-                                        new Money(BigDecimal.valueOf(500.00)), LocalDate.now().plusDays(60),
-                                        LocalDateTime.now(), LocalDateTime.now(), new ArrayList<>());
-                        invoice.addInstallment(installment2);
+                        invoice.addInstallment(new Money(BigDecimal.valueOf(500.00)), LocalDate.now().plusDays(60));
 
-                        Payment payment1 = new Payment(new PaymentId(UUID.randomUUID()), VALID_INSTALLMENT_ID,
-                                        new Money(BigDecimal.valueOf(400.00)), LocalDate.now(), LocalDateTime.now(),
-                                        LocalDateTime.now());
-                        invoice.addPayment(installment1, payment1);
+                        invoice.addPayment(invoice.getInstallments().get(0).getId(), LocalDate.now(),
+                                        new Money(BigDecimal.valueOf(400.00)));
 
-                        Payment payment2 = new Payment(new PaymentId(UUID.randomUUID()), VALID_INSTALLMENT_ID_2,
-                                        new Money(BigDecimal.valueOf(200.00)), LocalDate.now(), LocalDateTime.now(),
-                                        LocalDateTime.now());
-                        invoice.addPayment(installment2, payment2);
+                        invoice.addPayment(invoice.getInstallments().get(1).getId(), LocalDate.now(),
+                                        new Money(BigDecimal.valueOf(200.00)));
 
                         assertThat(invoice.getRemainingAmount()).isEqualTo(new Money(BigDecimal.valueOf(900.00)));
                 }
@@ -1256,14 +1002,11 @@ public class InvoiceTest {
                                         VALID_CURRENCY, LocalDateTime.now(), LocalDateTime.now(), false,
                                         new ArrayList<>());
 
-                        Installment installment = new Installment(VALID_INSTALLMENT_ID, VALID_INVOICE_ID,
-                                        new Money(BigDecimal.valueOf(500.00)), LocalDate.now().plusDays(30),
-                                        LocalDateTime.now(), LocalDateTime.now(), new ArrayList<>());
-                        invoice.addInstallment(installment);
+                        invoice.addInstallment(new Money(BigDecimal.valueOf(500.00)), LocalDate.now().plusDays(30));
 
-                        Installment found = invoice.findInstallmentById(VALID_INSTALLMENT_ID);
+                        Installment found = invoice.findInstallmentById(invoice.getInstallments().get(0).getId());
 
-                        assertThat(found).isEqualTo(installment);
+                        assertThat(found).isEqualTo(invoice.getInstallments().get(0));
                 }
 
                 @Test
@@ -1286,19 +1029,13 @@ public class InvoiceTest {
                                         VALID_CURRENCY, LocalDateTime.now(), LocalDateTime.now(), false,
                                         new ArrayList<>());
 
-                        Installment installment1 = new Installment(VALID_INSTALLMENT_ID, VALID_INVOICE_ID,
-                                        new Money(BigDecimal.valueOf(500.00)), LocalDate.now().plusDays(30),
-                                        LocalDateTime.now(), LocalDateTime.now(), new ArrayList<>());
-                        invoice.addInstallment(installment1);
+                        invoice.addInstallment(new Money(BigDecimal.valueOf(500.00)), LocalDate.now().plusDays(30));
 
-                        Installment installment2 = new Installment(VALID_INSTALLMENT_ID_2, VALID_INVOICE_ID,
-                                        new Money(BigDecimal.valueOf(300.00)), LocalDate.now().plusDays(60),
-                                        LocalDateTime.now(), LocalDateTime.now(), new ArrayList<>());
-                        invoice.addInstallment(installment2);
+                        invoice.addInstallment(new Money(BigDecimal.valueOf(300.00)), LocalDate.now().plusDays(60));
 
                         List<Installment> installments = invoice.getInstallments();
-                        assertThat(installments.get(0)).isEqualTo(installment1);
-                        assertThat(installments.get(1)).isEqualTo(installment2);
+                        assertThat(installments.get(0)).isEqualTo(invoice.getInstallments().get(0));
+                        assertThat(installments.get(1)).isEqualTo(invoice.getInstallments().get(1));
                 }
 
                 @Test
@@ -1308,15 +1045,9 @@ public class InvoiceTest {
                                         VALID_CURRENCY, LocalDateTime.now(), LocalDateTime.now(), false,
                                         new ArrayList<>());
 
-                        Installment futureInstallment = new Installment(VALID_INSTALLMENT_ID, VALID_INVOICE_ID,
-                                        new Money(BigDecimal.valueOf(500.00)), LocalDate.now().plusDays(30),
-                                        LocalDateTime.now(), LocalDateTime.now(), new ArrayList<>());
-                        invoice.addInstallment(futureInstallment);
+                        invoice.addInstallment(new Money(BigDecimal.valueOf(500.00)), LocalDate.now().plusDays(30));
 
-                        Installment overdueInstallment = new Installment(VALID_INSTALLMENT_ID_2, VALID_INVOICE_ID,
-                                        new Money(BigDecimal.valueOf(300.00)), LocalDate.now().minusDays(1),
-                                        LocalDateTime.now(), LocalDateTime.now(), new ArrayList<>());
-                        invoice.addInstallment(overdueInstallment);
+                        invoice.addInstallment(new Money(BigDecimal.valueOf(300.00)), LocalDate.now().minusDays(1));
 
                         assertThat(invoice.isOverdue()).isTrue();
                 }
@@ -1355,10 +1086,7 @@ public class InvoiceTest {
                                         VALID_CURRENCY, LocalDateTime.now(), LocalDateTime.now(), false,
                                         new ArrayList<>());
 
-                        Installment installment = new Installment(VALID_INSTALLMENT_ID, VALID_INVOICE_ID,
-                                        new Money(BigDecimal.valueOf(500.00)), LocalDate.now().plusDays(30),
-                                        LocalDateTime.now(), LocalDateTime.now(), new ArrayList<>());
-                        invoice.addInstallment(installment);
+                        invoice.addInstallment(new Money(BigDecimal.valueOf(500.00)), LocalDate.now().plusDays(30));
 
                         List<Installment> installments1 = invoice.getInstallments();
                         List<Installment> installments2 = invoice.getInstallments();
@@ -1374,15 +1102,9 @@ public class InvoiceTest {
                                         VALID_CURRENCY, LocalDateTime.now(), LocalDateTime.now(), false,
                                         new ArrayList<>());
 
-                        Installment installment1 = new Installment(VALID_INSTALLMENT_ID, VALID_INVOICE_ID,
-                                        new Money(BigDecimal.valueOf(500.00)), LocalDate.now().plusDays(30),
-                                        LocalDateTime.now(), LocalDateTime.now(), new ArrayList<>());
-                        invoice.addInstallment(installment1);
+                        invoice.addInstallment(new Money(BigDecimal.valueOf(500.00)), LocalDate.now().plusDays(30));
 
-                        Installment installment2 = new Installment(VALID_INSTALLMENT_ID_2, VALID_INVOICE_ID,
-                                        new Money(BigDecimal.valueOf(300.00)), LocalDate.now().plusDays(60),
-                                        LocalDateTime.now(), LocalDateTime.now(), new ArrayList<>());
-                        invoice.addInstallment(installment2);
+                        invoice.addInstallment(new Money(BigDecimal.valueOf(300.00)), LocalDate.now().plusDays(60));
 
                         assertThat(invoice.isOverdue()).isFalse();
                 }
@@ -1394,17 +1116,12 @@ public class InvoiceTest {
                                         VALID_CURRENCY, LocalDateTime.now(), LocalDateTime.now(), false,
                                         new ArrayList<>());
 
-                        Installment installment = new Installment(VALID_INSTALLMENT_ID, VALID_INVOICE_ID,
-                                        new Money(BigDecimal.valueOf(1000.00)), LocalDate.now().plusDays(30),
-                                        LocalDateTime.now(), LocalDateTime.now(), new ArrayList<>());
-                        invoice.addInstallment(installment);
+                        invoice.addInstallment(new Money(BigDecimal.valueOf(1000.00)), LocalDate.now().plusDays(30));
 
                         assertThat(invoice.getStatus()).isEqualTo(PaymentStatus.PENDING);
 
-                        Payment payment = new Payment(VALID_PAYMENT_ID, VALID_INSTALLMENT_ID,
-                                        new Money(BigDecimal.valueOf(500.00)), LocalDate.now(), LocalDateTime.now(),
-                                        LocalDateTime.now());
-                        invoice.addPayment(installment, payment);
+                        invoice.addPayment(invoice.getInstallments().get(0).getId(), LocalDate.now(),
+                                        new Money(BigDecimal.valueOf(500.00)));
 
                         assertThat(invoice.getStatus()).isEqualTo(PaymentStatus.PARTIALLY_PAID);
                 }
@@ -1416,22 +1133,15 @@ public class InvoiceTest {
                                         VALID_CURRENCY, LocalDateTime.now(), LocalDateTime.now(), false,
                                         new ArrayList<>());
 
-                        Installment installment = new Installment(VALID_INSTALLMENT_ID, VALID_INVOICE_ID,
-                                        new Money(BigDecimal.valueOf(1000.00)), LocalDate.now().plusDays(30),
-                                        LocalDateTime.now(), LocalDateTime.now(), new ArrayList<>());
-                        invoice.addInstallment(installment);
+                        invoice.addInstallment(new Money(BigDecimal.valueOf(1000.00)), LocalDate.now().plusDays(30));
 
-                        Payment payment1 = new Payment(VALID_PAYMENT_ID, VALID_INSTALLMENT_ID,
-                                        new Money(BigDecimal.valueOf(500.00)), LocalDate.now(), LocalDateTime.now(),
-                                        LocalDateTime.now());
-                        invoice.addPayment(installment, payment1);
+                        invoice.addPayment(invoice.getInstallments().get(0).getId(), LocalDate.now(),
+                                        new Money(BigDecimal.valueOf(500.00)));
 
                         assertThat(invoice.getStatus()).isEqualTo(PaymentStatus.PARTIALLY_PAID);
 
-                        Payment payment2 = new Payment(new PaymentId(UUID.randomUUID()), VALID_INSTALLMENT_ID,
-                                        new Money(BigDecimal.valueOf(500.00)), LocalDate.now(), LocalDateTime.now(),
-                                        LocalDateTime.now());
-                        invoice.addPayment(installment, payment2);
+                        invoice.addPayment(invoice.getInstallments().get(0).getId(), LocalDate.now(),
+                                        new Money(BigDecimal.valueOf(500.00)));
 
                         assertThat(invoice.getStatus()).isEqualTo(PaymentStatus.PAID);
                 }
@@ -1445,18 +1155,11 @@ public class InvoiceTest {
 
                         LocalDate dueDate = LocalDate.now().plusDays(30);
 
-                        Installment installment1 = new Installment(VALID_INSTALLMENT_ID, VALID_INVOICE_ID,
-                                        new Money(BigDecimal.valueOf(500.00)), dueDate, LocalDateTime.now(),
-                                        LocalDateTime.now(), new ArrayList<>());
-                        invoice.addInstallment(installment1);
+                        invoice.addInstallment(new Money(BigDecimal.valueOf(500.00)), dueDate);
 
-                        invoice.removeInstallment(installment1);
+                        invoice.removeInstallment(invoice.getInstallments().get(0).getId());
 
-                        Installment installment2 = new Installment(VALID_INSTALLMENT_ID_2, VALID_INVOICE_ID,
-                                        new Money(BigDecimal.valueOf(300.00)), dueDate, LocalDateTime.now(),
-                                        LocalDateTime.now(), new ArrayList<>());
-
-                        invoice.addInstallment(installment2);
+                        invoice.addInstallment(new Money(BigDecimal.valueOf(300.00)), dueDate);
 
                         assertThat(invoice.getInstallments()).hasSize(1);
                         assertThat(invoice.getInstallments().get(0).getDueDate()).isEqualTo(dueDate);
@@ -1469,18 +1172,13 @@ public class InvoiceTest {
                                         VALID_CURRENCY, LocalDateTime.now(), LocalDateTime.now(), false,
                                         new ArrayList<>());
 
-                        Installment installment = new Installment(VALID_INSTALLMENT_ID, VALID_INVOICE_ID,
-                                        new Money(BigDecimal.valueOf(500.00)), LocalDate.now().plusDays(30),
-                                        LocalDateTime.now(), LocalDateTime.now(), new ArrayList<>());
-                        invoice.addInstallment(installment);
+                        invoice.addInstallment(new Money(BigDecimal.valueOf(500.00)), LocalDate.now().plusDays(30));
 
                         LocalDateTime originalUpdatedAt = invoice.getUpdatedAt();
                         Thread.sleep(10);
 
-                        Payment payment = new Payment(VALID_PAYMENT_ID, VALID_INSTALLMENT_ID,
-                                        new Money(BigDecimal.valueOf(200.00)), LocalDate.now(), LocalDateTime.now(),
-                                        LocalDateTime.now());
-                        invoice.addPayment(installment, payment);
+                        invoice.addPayment(invoice.getInstallments().get(0).getId(), LocalDate.now(),
+                                        new Money(BigDecimal.valueOf(200.00)));
 
                         assertThat(invoice.getUpdatedAt()).isAfter(originalUpdatedAt);
                 }
