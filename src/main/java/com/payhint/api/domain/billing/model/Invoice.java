@@ -98,7 +98,7 @@ public class Invoice {
         boolean dueDateExists = this.installments.stream()
                 .anyMatch(installment -> installment.getDueDate().equals(dueDate));
         if (dueDateExists) {
-            throw new InvalidPropertyException("An installment with due date " + dueDate + " already exists.");
+            throw new InvalidPropertyException("An installment with same due date already exists.");
         }
     }
 
@@ -200,8 +200,7 @@ public class Invoice {
         InstallmentId installmentId = new InstallmentId(UUID.randomUUID());
         ensureNotArchived();
         if (this.installments.stream().anyMatch(inst -> inst.getId().equals(installmentId))) {
-            throw new InvalidPropertyException(
-                    "Installment with id " + installmentId + " already exists in the invoice.");
+            throw new InvalidPropertyException("Installment with this id already exists in the invoice.");
         }
         if (amountDue.compareTo(Money.ZERO) <= 0) {
             throw new InvalidMoneyValueException("Installment amountDue must be greater than zero");
@@ -261,7 +260,8 @@ public class Invoice {
         Payment existingPayment = existingInstallment.findPaymentById(paymentId);
         paymentDate = paymentDate != null ? paymentDate : existingPayment.getPaymentDate();
         amount = amount != null ? amount : existingPayment.getAmount();
-        Payment updatedPayment = new Payment(paymentId, amount, paymentDate, null, null);
+        Payment updatedPayment = new Payment(paymentId, amount, paymentDate, existingPayment.getCreatedAt(),
+                existingPayment.getUpdatedAt());
         Money oldAmount = existingPayment.getAmount();
         existingInstallment.updatePayment(updatedPayment);
         if (amount != null) {
