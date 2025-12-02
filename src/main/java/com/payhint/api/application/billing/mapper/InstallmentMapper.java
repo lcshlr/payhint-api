@@ -4,6 +4,7 @@ import java.util.List;
 
 import org.mapstruct.IterableMapping;
 import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 import org.mapstruct.Named;
 
 import com.payhint.api.application.billing.dto.response.InstallmentResponse;
@@ -14,6 +15,7 @@ import com.payhint.api.domain.billing.model.Installment;
 public interface InstallmentMapper {
 
     @Named("toInstallmentResponse")
+    @Mapping(source = "overdue", target = "isOverdue")
     InstallmentResponse toInstallmentResponse(Installment installment);
 
     @Named("toInstallmentResponseList")

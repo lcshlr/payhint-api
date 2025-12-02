@@ -13,8 +13,10 @@ import org.springframework.transaction.annotation.Transactional;
 import com.payhint.api.application.billing.dto.request.CreateInvoiceRequest;
 import com.payhint.api.application.billing.dto.request.UpdateInvoiceRequest;
 import com.payhint.api.application.billing.dto.response.InvoiceResponse;
+import com.payhint.api.application.billing.dto.response.InvoiceSummaryResponse;
 import com.payhint.api.application.billing.mapper.InstallmentMapper;
 import com.payhint.api.application.billing.mapper.InvoiceMapper;
+import com.payhint.api.application.billing.repository.InvoiceQueryRepository;
 import com.payhint.api.application.billing.usecase.InvoiceLifecycleUseCase;
 import com.payhint.api.application.shared.exception.AlreadyExistsException;
 import com.payhint.api.application.shared.exception.NotFoundException;
@@ -37,12 +39,14 @@ public class InvoiceLifecycleService implements InvoiceLifecycleUseCase {
     private static final Logger logger = LoggerFactory.getLogger(InvoiceLifecycleService.class);
 
     private final InvoiceRepository invoiceRepository;
+    private final InvoiceQueryRepository invoiceQueryRepository;
     private final CustomerRepository customerRepository;
     private final InvoiceMapper invoiceMapper;
 
-    public InvoiceLifecycleService(InvoiceRepository invoiceRepository, CustomerRepository customerRepository,
-            InvoiceMapper invoiceMapper, InstallmentMapper installmentMapper) {
+    public InvoiceLifecycleService(InvoiceRepository invoiceRepository, InvoiceQueryRepository invoiceQueryRepository,
+            CustomerRepository customerRepository, InvoiceMapper invoiceMapper, InstallmentMapper installmentMapper) {
         this.invoiceRepository = invoiceRepository;
+        this.invoiceQueryRepository = invoiceQueryRepository;
         this.customerRepository = customerRepository;
         this.invoiceMapper = invoiceMapper;
     }
@@ -75,7 +79,7 @@ public class InvoiceLifecycleService implements InvoiceLifecycleUseCase {
 
     @Transactional(readOnly = true)
     @Override
-    public InvoiceResponse viewInvoiceSummary(UserId userId, InvoiceId invoiceId) {
+    public InvoiceResponse viewInvoice(UserId userId, InvoiceId invoiceId) {
         Invoice invoice = invoiceRepository.findByIdAndOwner(invoiceId, userId).orElseThrow(
                 () -> new NotFoundException("Invoice with ID " + invoiceId + " not found for user ID " + userId));
         return invoiceMapper.toInvoiceResponse(invoice);
@@ -83,10 +87,15 @@ public class InvoiceLifecycleService implements InvoiceLifecycleUseCase {
 
     @Transactional(readOnly = true)
     @Override
-    public List<InvoiceResponse> listInvoicesByCustomer(UserId userId, CustomerId customerId) {
+    public List<InvoiceSummaryResponse> listInvoicesByUser(UserId userId) {
+        return invoiceQueryRepository.findSummariesByUserId(userId);
+    }
+
+    @Transactional(readOnly = true)
+    @Override
+    public List<InvoiceSummaryResponse> listInvoicesByCustomer(UserId userId, CustomerId customerId) {
         validateCustomerBelongsToUser(userId, customerId);
-        List<Invoice> invoices = invoiceRepository.findAllByCustomerId(customerId);
-        return invoiceMapper.toInvoiceResponse(invoices);
+        return invoiceQueryRepository.findSummariesByCustomerId(customerId);
     }
 
     @Transactional()

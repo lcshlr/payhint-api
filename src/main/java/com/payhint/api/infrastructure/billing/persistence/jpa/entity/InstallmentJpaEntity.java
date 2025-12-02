@@ -60,14 +60,23 @@ public class InstallmentJpaEntity implements Persistable<UUID> {
     @Column(name = "amount_due", nullable = false, precision = 12, scale = 2)
     private BigDecimal amountDue;
 
+    @Column(name = "amount_paid", nullable = false, precision = 12, scale = 2)
+    private BigDecimal amountPaid;
+
     @Column(name = "due_date", nullable = false)
     private LocalDate dueDate;
+
+    @Column(name = "status", nullable = false)
+    private String status;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
+
+    @Column(name = "last_status_change_at", nullable = false)
+    private LocalDateTime lastStatusChangeAt;
 
     @OneToMany(mappedBy = "installment", cascade = CascadeType.ALL, orphanRemoval = true)
     @BatchSize(size = 25)

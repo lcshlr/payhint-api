@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.payhint.api.application.billing.dto.response.InvoiceResponse;
+import com.payhint.api.application.billing.dto.response.InvoiceSummaryResponse;
 import com.payhint.api.application.billing.usecase.InvoiceLifecycleUseCase;
 import com.payhint.api.application.crm.dto.request.CreateCustomerRequest;
 import com.payhint.api.application.crm.dto.request.UpdateCustomerRequest;
@@ -33,12 +33,12 @@ import jakarta.validation.Valid;
 public class CustomerController {
 
     private final CustomerManagementUseCase customerManagementUseCase;
-    private final InvoiceLifecycleUseCase invoiceManagementUseCase;
+    private final InvoiceLifecycleUseCase invoiceLifecycleUseCase;
 
     public CustomerController(CustomerManagementUseCase customerManagementUseCase,
-            InvoiceLifecycleUseCase invoiceManagementUseCase) {
+            InvoiceLifecycleUseCase invoiceLifecycleUseCase) {
         this.customerManagementUseCase = customerManagementUseCase;
-        this.invoiceManagementUseCase = invoiceManagementUseCase;
+        this.invoiceLifecycleUseCase = invoiceLifecycleUseCase;
     }
 
     @GetMapping("/{id}")
@@ -55,11 +55,11 @@ public class CustomerController {
     }
 
     @GetMapping("/{id}/invoices")
-    public List<InvoiceResponse> getInvoicesByCustomerId(@AuthenticationPrincipal UserPrincipal userPrincipal,
+    public List<InvoiceSummaryResponse> getInvoicesByCustomerId(@AuthenticationPrincipal UserPrincipal userPrincipal,
             @PathVariable String id) {
         UserId userId = new UserId(userPrincipal.getId());
         CustomerId customerId = new CustomerId(UUID.fromString(id));
-        return invoiceManagementUseCase.listInvoicesByCustomer(userId, customerId);
+        return invoiceLifecycleUseCase.listInvoicesByCustomer(userId, customerId);
     }
 
     @PostMapping()

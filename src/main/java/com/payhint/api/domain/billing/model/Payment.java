@@ -6,6 +6,7 @@ import java.time.LocalDateTime;
 import com.payhint.api.domain.billing.exception.InvalidMoneyValueException;
 import com.payhint.api.domain.billing.valueobject.Money;
 import com.payhint.api.domain.billing.valueobject.PaymentId;
+import com.payhint.api.domain.shared.exception.InvalidPropertyException;
 
 import lombok.Getter;
 import lombok.NonNull;
@@ -23,10 +24,10 @@ public class Payment {
     @NonNull
     private LocalDateTime updatedAt;
 
-    public Payment(@NonNull PaymentId id, @NonNull Money amount, @NonNull LocalDate paymentDate,
-            @NonNull LocalDateTime createdAt, @NonNull LocalDateTime updatedAt) {
+    public Payment(@NonNull PaymentId id, Money amount, LocalDate paymentDate, @NonNull LocalDateTime createdAt,
+            @NonNull LocalDateTime updatedAt) {
         if (id == null) {
-            throw new com.payhint.api.domain.shared.exception.InvalidPropertyException("PaymentId cannot be null");
+            throw new InvalidPropertyException("PaymentId cannot be null");
         }
         this.id = id;
         this.amount = amount;

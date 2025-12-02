@@ -1,5 +1,6 @@
 package com.payhint.api.infrastructure.billing.web.controller;
 
+import java.util.List;
 import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
@@ -18,6 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.payhint.api.application.billing.dto.request.CreateInvoiceRequest;
 import com.payhint.api.application.billing.dto.request.UpdateInvoiceRequest;
 import com.payhint.api.application.billing.dto.response.InvoiceResponse;
+import com.payhint.api.application.billing.dto.response.InvoiceSummaryResponse;
 import com.payhint.api.application.billing.usecase.InvoiceLifecycleUseCase;
 import com.payhint.api.domain.billing.valueobject.InvoiceId;
 import com.payhint.api.domain.crm.valueobject.UserId;
@@ -35,11 +37,17 @@ public class InvoiceController {
         this.invoiceManagementUseCase = invoiceManagementUseCase;
     }
 
+    @GetMapping()
+    public List<InvoiceSummaryResponse> getAll(@AuthenticationPrincipal UserPrincipal userPrincipal) {
+        UserId userId = new UserId(userPrincipal.getId());
+        return invoiceManagementUseCase.listInvoicesByUser(userId);
+    }
+
     @GetMapping("/{id}")
     public InvoiceResponse getById(@AuthenticationPrincipal UserPrincipal userPrincipal, @PathVariable String id) {
         UserId userId = new UserId(userPrincipal.getId());
         InvoiceId invoiceId = new InvoiceId(UUID.fromString(id));
-        return invoiceManagementUseCase.viewInvoiceSummary(userId, invoiceId);
+        return invoiceManagementUseCase.viewInvoice(userId, invoiceId);
     }
 
     @PostMapping()

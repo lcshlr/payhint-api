@@ -27,7 +27,17 @@ public interface InvoicePersistenceMapper {
 
     @Mapping(target = "customer", ignore = true)
     @Mapping(target = "installments", ignore = true)
-    InvoiceJpaEntity toEntity(Invoice invoice);
+    InvoiceJpaEntity toEntityInternal(Invoice invoice);
+
+    default InvoiceJpaEntity toEntity(Invoice invoice) {
+        InvoiceJpaEntity entity = toEntityInternal(invoice);
+        if (invoice.getInstallments() != null) {
+            List<InstallmentJpaEntity> installmentEntities = invoice.getInstallments().stream().map(this::toEntity)
+                    .collect(Collectors.toList());
+            installmentEntities.forEach(entity::addInstallment);
+        }
+        return entity;
+    }
 
     @Mapping(target = "invoice", ignore = true)
     @Mapping(target = "payments", ignore = true)

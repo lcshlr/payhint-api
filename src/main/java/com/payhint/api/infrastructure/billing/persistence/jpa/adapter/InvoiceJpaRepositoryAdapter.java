@@ -59,10 +59,7 @@ public class InvoiceJpaRepositoryAdapter implements InvoiceRepository {
     }
 
     @Override
-    public List<Invoice> findAllByCustomerId(CustomerId customerId) {
-        if (customerId == null) {
-            return List.of();
-        }
+    public List<Invoice> findAllByCustomerId(@NonNull CustomerId customerId) {
         return springDataInvoiceRepository.findAllByCustomerId(customerId.value()).stream().map(mapper::toDomain)
                 .collect(Collectors.toList());
     }

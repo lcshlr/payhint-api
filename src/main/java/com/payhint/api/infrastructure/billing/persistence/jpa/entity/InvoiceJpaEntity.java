@@ -1,5 +1,6 @@
 package com.payhint.api.infrastructure.billing.persistence.jpa.entity;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.LinkedHashSet;
 import java.util.Set;
@@ -62,14 +63,26 @@ public class InvoiceJpaEntity implements Persistable<UUID> {
     @Column(name = "invoice_reference", nullable = false)
     private String invoiceReference;
 
+    @Column(name = "total_amount", nullable = false, precision = 12, scale = 2)
+    private BigDecimal totalAmount;
+
+    @Column(name = "total_paid", nullable = false, precision = 12, scale = 2)
+    private BigDecimal totalPaid;
+
     @Column(nullable = false, length = 10)
     private String currency;
+
+    @Column(name = "status", nullable = false)
+    private String status;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
+
+    @Column(name = "last_status_change_at", nullable = false)
+    private LocalDateTime lastStatusChangeAt;
 
     @Column(name = "is_archived", nullable = false)
     private boolean isArchived;

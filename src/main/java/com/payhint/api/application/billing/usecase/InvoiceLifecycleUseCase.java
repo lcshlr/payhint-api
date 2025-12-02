@@ -5,14 +5,18 @@ import java.util.List;
 import com.payhint.api.application.billing.dto.request.CreateInvoiceRequest;
 import com.payhint.api.application.billing.dto.request.UpdateInvoiceRequest;
 import com.payhint.api.application.billing.dto.response.InvoiceResponse;
+import com.payhint.api.application.billing.dto.response.InvoiceSummaryResponse;
 import com.payhint.api.domain.billing.valueobject.InvoiceId;
 import com.payhint.api.domain.crm.valueobject.CustomerId;
 import com.payhint.api.domain.crm.valueobject.UserId;
 
 public interface InvoiceLifecycleUseCase {
-        InvoiceResponse viewInvoiceSummary(UserId userId, InvoiceId invoiceId);
 
-        List<InvoiceResponse> listInvoicesByCustomer(UserId userId, CustomerId customerId);
+        InvoiceResponse viewInvoice(UserId userId, InvoiceId invoiceId);
+
+        List<InvoiceSummaryResponse> listInvoicesByUser(UserId userId);
+
+        List<InvoiceSummaryResponse> listInvoicesByCustomer(UserId userId, CustomerId customerId);
 
         InvoiceResponse updateInvoice(UserId userId, InvoiceId invoiceId, UpdateInvoiceRequest request);
 

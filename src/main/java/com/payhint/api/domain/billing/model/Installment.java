@@ -24,55 +24,48 @@ public class Installment {
     @NonNull
     private Money amountDue;
     @NonNull
+    private Money amountPaid;
+    @NonNull
     private LocalDate dueDate;
+    @NonNull
+    private PaymentStatus status;
     @NonNull
     private LocalDateTime createdAt;
     @NonNull
     private LocalDateTime updatedAt;
+    @NonNull
+    private LocalDateTime lastStatusChangeAt;
     @Builder.Default
     private List<Payment> payments = new ArrayList<>();
 
-    public Installment(@NonNull InstallmentId id, @NonNull Money amountDue, @NonNull LocalDate dueDate,
-            @NonNull LocalDateTime createdAt, @NonNull LocalDateTime updatedAt, List<Payment> payments) {
+    public Installment(@NonNull InstallmentId id, Money amountDue, @NonNull Money amountPaid, LocalDate dueDate,
+            @NonNull PaymentStatus status, @NonNull LocalDateTime createdAt, @NonNull LocalDateTime updatedAt,
+            @NonNull LocalDateTime lastStatusChangeAt, @NonNull List<Payment> payments) {
         if (id == null) {
             throw new InvalidPropertyException("InstallmentId cannot be null");
         }
         this.id = id;
         this.amountDue = amountDue;
+        this.amountPaid = amountPaid;
         this.dueDate = dueDate;
+        this.status = status;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
+        this.lastStatusChangeAt = lastStatusChangeAt;
         this.payments = payments != null ? new ArrayList<>(payments) : new ArrayList<>();
     }
 
     public static Installment create(@NonNull InstallmentId id, @NonNull Money amountDue, @NonNull LocalDate dueDate) {
-        return new Installment(id, amountDue, dueDate, LocalDateTime.now(), LocalDateTime.now(), new ArrayList<>());
-    }
-
-    public boolean isPaid() {
-        return getRemainingAmount().compareTo(Money.ZERO) == 0;
+        return new Installment(id, amountDue, Money.ZERO, dueDate, PaymentStatus.PENDING, LocalDateTime.now(),
+                LocalDateTime.now(), LocalDateTime.now(), new ArrayList<>());
     }
 
     public boolean isOverdue() {
-        return !isPaid() && LocalDate.now().isAfter(dueDate);
-    }
-
-    public PaymentStatus getStatus() {
-        Money amountPaid = getAmountPaid();
-        if (amountPaid.compareTo(amountDue) == 0 && getPayments().size() > 0) {
-            return PaymentStatus.PAID;
-        } else if (amountPaid.compareTo(Money.ZERO) > 0) {
-            return PaymentStatus.PARTIALLY_PAID;
-        }
-        return PaymentStatus.PENDING;
-    }
-
-    public Money getAmountPaid() {
-        return this.payments.stream().map(Payment::getAmount).reduce(Money.ZERO, Money::add);
+        return this.status != PaymentStatus.PAID && LocalDate.now().isAfter(dueDate);
     }
 
     public Money getRemainingAmount() {
-        return amountDue.subtract(getAmountPaid());
+        return amountDue.subtract(amountPaid);
     }
 
     public List<Payment> getPayments() {
@@ -82,6 +75,21 @@ public class Installment {
     public Payment findPaymentById(@NonNull PaymentId paymentId) {
         return this.payments.stream().filter(pmt -> pmt.getId().equals(paymentId)).findFirst().orElseThrow(
                 () -> new InvalidPropertyException("Payment with id " + paymentId + " not found in installment"));
+    }
+
+    private void updateStatus() {
+        PaymentStatus oldStatus = this.status;
+        if (amountPaid.compareTo(amountDue) >= 0) {
+            this.status = PaymentStatus.PAID;
+        } else if (amountPaid.compareTo(Money.ZERO) > 0) {
+            this.status = PaymentStatus.PARTIALLY_PAID;
+        } else {
+            this.status = PaymentStatus.PENDING;
+        }
+
+        if (oldStatus != this.status) {
+            this.lastStatusChangeAt = LocalDateTime.now();
+        }
     }
 
     void updateDetails(Money amountDue, LocalDate dueDate) {
@@ -97,6 +105,7 @@ public class Installment {
         }
         if (updated) {
             this.updatedAt = LocalDateTime.now();
+            updateStatus();
         }
     }
 
@@ -104,7 +113,7 @@ public class Installment {
         if (newAmountDue.compareTo(Money.ZERO) <= 0) {
             throw new InvalidMoneyValueException("Installment amountDue must be greater than zero");
         }
-        var amountPaid = getAmountPaid();
+
         if (newAmountDue.compareTo(amountPaid) < 0) {
             throw new InvalidMoneyValueException(
                     "Installment amountDue cannot be less than amountPaid: " + amountPaid.amount());
@@ -141,6 +150,8 @@ public class Installment {
             throw new InvalidMoneyValueException("Payment amount exceeds remaining installment amount");
         }
         this.payments.add(payment);
+        this.amountPaid = this.amountPaid.add(payment.getAmount());
+        updateStatus();
         this.updatedAt = LocalDateTime.now();
     }
 
@@ -157,9 +168,15 @@ public class Installment {
 
         validatePaymentUpdate(existingPayment.getAmount(), updatedPayment.getAmount());
 
+        Money oldAmount = existingPayment.getAmount();
         Money newAmount = updatedPayment.getAmount();
 
         existingPayment.updateDetails(newAmount, updatedPayment.getPaymentDate());
+
+        if (newAmount != null) {
+            this.amountPaid = this.amountPaid.subtract(oldAmount).add(newAmount);
+            updateStatus();
+        }
 
         this.updatedAt = LocalDateTime.now();
     }
@@ -169,6 +186,8 @@ public class Installment {
             throw new InvalidPropertyException("Payment ID cannot be null when removing a payment");
         }
         if (this.payments.remove(payment)) {
+            this.amountPaid = this.amountPaid.subtract(payment.getAmount());
+            updateStatus();
             this.updatedAt = LocalDateTime.now();
         } else {
             throw new InvalidPropertyException("Payment not found in installment");

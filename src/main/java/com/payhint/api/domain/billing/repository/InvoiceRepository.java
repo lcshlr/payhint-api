@@ -13,15 +13,15 @@ public interface InvoiceRepository {
 
     Invoice save(Invoice invoice);
 
-    Optional<Invoice> findById(InvoiceId id);
+    void deleteById(InvoiceId id);
 
-    List<Invoice> findAllByCustomerId(CustomerId customerId);
+    void deleteByCustomerId(CustomerId customerId);
+
+    Optional<Invoice> findById(InvoiceId id);
 
     Optional<Invoice> findByCustomerIdAndInvoiceReference(CustomerId customerId, InvoiceReference invoiceReference);
 
     Optional<Invoice> findByIdAndOwner(InvoiceId id, UserId userId);
 
-    void deleteById(InvoiceId id);
-
-    void deleteByCustomerId(CustomerId customerId);
+    List<Invoice> findAllByCustomerId(CustomerId customerId);
 }

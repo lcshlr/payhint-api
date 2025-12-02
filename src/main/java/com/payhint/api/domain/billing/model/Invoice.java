@@ -34,13 +34,25 @@ public class Invoice {
     private InvoiceReference invoiceReference;
 
     @NonNull
+    private Money totalAmount;
+
+    @NonNull
+    private Money totalPaid;
+
+    @NonNull
     private String currency;
+
+    @NonNull
+    private PaymentStatus status;
 
     @NonNull
     private LocalDateTime createdAt;
 
     @NonNull
     private LocalDateTime updatedAt;
+
+    @NonNull
+    private LocalDateTime lastStatusChangeAt;
 
     private boolean isArchived;
 
@@ -50,26 +62,32 @@ public class Invoice {
     private Long version;
 
     public Invoice(@NonNull InvoiceId id, CustomerId customerId, @NonNull InvoiceReference invoiceReference,
-            @NonNull String currency, @NonNull LocalDateTime createdAt, @NonNull LocalDateTime updatedAt,
-            boolean isArchived, List<Installment> installments, Long version) {
+            @NonNull Money totalAmount, @NonNull Money totalPaid, @NonNull String currency,
+            @NonNull PaymentStatus status, @NonNull LocalDateTime createdAt, @NonNull LocalDateTime updatedAt,
+            @NonNull LocalDateTime lastStatusChangeAt, boolean isArchived, List<Installment> installments,
+            Long version) {
         if (id == null) {
             throw new InvalidPropertyException("InvoiceId cannot be null");
         }
         this.id = id;
         this.customerId = customerId;
         this.invoiceReference = invoiceReference;
+        this.totalAmount = totalAmount;
+        this.totalPaid = totalPaid;
+        this.status = status;
         this.currency = currency;
         this.isArchived = isArchived;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
+        this.lastStatusChangeAt = lastStatusChangeAt;
         this.version = version;
         this.installments = installments != null ? new ArrayList<>(installments) : new ArrayList<>();
     }
 
     public static Invoice create(@NonNull InvoiceId id, @NonNull CustomerId customerId,
             @NonNull InvoiceReference invoiceReference, @NonNull String currency) {
-        return new Invoice(id, customerId, invoiceReference, currency, LocalDateTime.now(), LocalDateTime.now(), false,
-                new ArrayList<>(), null);
+        return new Invoice(id, customerId, invoiceReference, Money.ZERO, Money.ZERO, currency, PaymentStatus.PENDING,
+                LocalDateTime.now(), LocalDateTime.now(), LocalDateTime.now(), false, new ArrayList<>(), null);
     }
 
     public List<Installment> getInstallments() {
@@ -84,30 +102,12 @@ public class Invoice {
         }
     }
 
-    public PaymentStatus getStatus() {
-        Money totalPaid = getTotalPaid();
-        if (totalPaid.compareTo(getTotalAmount()) == 0 && getInstallments().size() > 0) {
-            return PaymentStatus.PAID;
-        } else if (totalPaid.compareTo(Money.ZERO) > 0) {
-            return PaymentStatus.PARTIALLY_PAID;
-        }
-        return PaymentStatus.PENDING;
-    }
-
-    public Money getTotalAmount() {
-        return installments.stream().map(Installment::getAmountDue).reduce(Money.ZERO, Money::add);
-    }
-
     public boolean isOverdue() {
         return installments.stream().anyMatch(installment -> installment.isOverdue());
     }
 
-    public Money getTotalPaid() {
-        return installments.stream().map(Installment::getAmountPaid).reduce(Money.ZERO, Money::add);
-    }
-
     public Money getRemainingAmount() {
-        return getTotalAmount().subtract(getTotalPaid());
+        return totalAmount.subtract(totalPaid);
     }
 
     public boolean isFullyPaid() {
@@ -125,6 +125,21 @@ public class Invoice {
     private void ensureNotArchived() {
         if (this.isArchived) {
             throw new IllegalStateException("Cannot modify an archived invoice.");
+        }
+    }
+
+    private void updateStatus() {
+        PaymentStatus oldStatus = this.status;
+        if (totalPaid.compareTo(totalAmount) >= 0) {
+            this.status = PaymentStatus.PAID;
+        } else if (totalPaid.compareTo(Money.ZERO) > 0) {
+            this.status = PaymentStatus.PARTIALLY_PAID;
+        } else {
+            this.status = PaymentStatus.PENDING;
+        }
+
+        if (oldStatus != this.status) {
+            this.lastStatusChangeAt = LocalDateTime.now();
         }
     }
 
@@ -175,6 +190,9 @@ public class Invoice {
         }
 
         this.installments.addAll(installments);
+        this.totalAmount = this.totalAmount
+                .add(installments.stream().map(Installment::getAmountDue).reduce(Money.ZERO, Money::add));
+        updateStatus();
         this.updatedAt = LocalDateTime.now();
     }
 
@@ -191,15 +209,27 @@ public class Invoice {
         ensureDueDateDoesNotExistInOtherInstallments(dueDate);
         Installment installment = Installment.create(installmentId, amountDue, dueDate);
         this.installments.add(installment);
+        this.totalAmount = this.totalAmount.add(amountDue);
+        updateStatus();
         this.updatedAt = LocalDateTime.now();
     }
 
     public void updateInstallment(@NonNull InstallmentId installmentId, Money amountDue, LocalDate dueDate) {
         ensureNotArchived();
         Installment existingInstallment = findInstallmentById(installmentId);
-        Installment updatedInstallment = Installment.create(installmentId, amountDue, dueDate);
+        amountDue = amountDue != null ? amountDue : existingInstallment.getAmountDue();
+        dueDate = dueDate != null ? dueDate : existingInstallment.getDueDate();
+        Installment updatedInstallment = new Installment(installmentId, amountDue, existingInstallment.getAmountPaid(),
+                dueDate, existingInstallment.getStatus(), existingInstallment.getCreatedAt(),
+                existingInstallment.getUpdatedAt(), existingInstallment.getLastStatusChangeAt(),
+                existingInstallment.getPayments());
         ensureInstallmentCanBeUpdated(existingInstallment, updatedInstallment);
+        Money oldAmountDue = existingInstallment.getAmountDue();
         existingInstallment.updateDetails(updatedInstallment.getAmountDue(), updatedInstallment.getDueDate());
+        if (amountDue != null) {
+            this.totalAmount = this.totalAmount.subtract(oldAmountDue).add(amountDue);
+            updateStatus();
+        }
         this.updatedAt = LocalDateTime.now();
     }
 
@@ -209,6 +239,8 @@ public class Invoice {
         if (!this.installments.remove(installment)) {
             throw new InstallmentDoesNotBelongToInvoiceException(installmentId, this.id);
         }
+        this.totalAmount = this.totalAmount.subtract(installment.getAmountDue());
+        updateStatus();
         this.updatedAt = LocalDateTime.now();
     }
 
@@ -217,6 +249,8 @@ public class Invoice {
         Installment existingInstallment = findInstallmentById(installmentId);
         Payment payment = Payment.create(new PaymentId(UUID.randomUUID()), amount, paymentDate);
         existingInstallment.addPayment(payment);
+        this.totalPaid = this.totalPaid.add(amount);
+        updateStatus();
         this.updatedAt = LocalDateTime.now();
     }
 
@@ -224,8 +258,16 @@ public class Invoice {
             Money amount) {
         ensureNotArchived();
         Installment existingInstallment = findInstallmentById(installmentId);
-        Payment updatedPayment = Payment.create(paymentId, amount, paymentDate);
+        Payment existingPayment = existingInstallment.findPaymentById(paymentId);
+        paymentDate = paymentDate != null ? paymentDate : existingPayment.getPaymentDate();
+        amount = amount != null ? amount : existingPayment.getAmount();
+        Payment updatedPayment = new Payment(paymentId, amount, paymentDate, null, null);
+        Money oldAmount = existingPayment.getAmount();
         existingInstallment.updatePayment(updatedPayment);
+        if (amount != null) {
+            this.totalPaid = this.totalPaid.subtract(oldAmount).add(amount);
+            updateStatus();
+        }
         this.updatedAt = LocalDateTime.now();
     }
 
@@ -234,6 +276,8 @@ public class Invoice {
         Installment existingInstallment = findInstallmentById(installmentId);
         Payment payment = existingInstallment.findPaymentById(paymentId);
         existingInstallment.removePayment(payment);
+        this.totalPaid = this.totalPaid.subtract(payment.getAmount());
+        updateStatus();
         this.updatedAt = LocalDateTime.now();
     }
 
