@@ -47,7 +47,7 @@ import com.payhint.api.infrastructure.crm.persistence.jpa.repository.UserSpringR
                 "spring.datasource.password=", "spring.jpa.database-platform=org.hibernate.dialect.H2Dialect",
                 "spring.jpa.hibernate.ddl-auto=create-drop" })
 @Transactional
-@DisplayName("InvoiceService Integration Tests")
+@DisplayName("InstallmentSchedulingService Integration Tests")
 class InstallmentSchedulingServiceIntegrationTest {
 
         @Autowired
@@ -272,6 +272,102 @@ class InstallmentSchedulingServiceIntegrationTest {
                                         new InstallmentId(UUID.fromString(inst50Id)), pay2);
                         assertThat(afterPay2.status()).isEqualTo("PAID");
                         assertThat(afterPay2.remainingAmount()).isEqualByComparingTo("0");
+                }
+        }
+
+        @Nested
+        @DisplayName("Consistency and Flow Tests")
+        class ConsistencyAndFlowTests {
+
+                @Test
+                @DisplayName("Should verify consistency across invoice properties when manipulating installments")
+                void shouldVerifyConsistencyWhenManipulatingInstallments() {
+                        // 1. Create Invoice
+                        Invoice invoice = createTestInvoice(testCustomer.getId(), "INV-FLOW-INST-001");
+                        assertThat(invoice.getStatus().name()).isEqualTo("PENDING");
+                        assertThat(invoice.getTotalAmount().amount()).isEqualByComparingTo("0.00");
+
+                        // 2. Add Installment
+                        CreateInstallmentRequest instRequest = new CreateInstallmentRequest(new BigDecimal("100.00"),
+                                        LocalDate.now().plusDays(10).toString());
+                        var addResponse = installmentService.addInstallment(testUser.getId(), invoice.getId(),
+                                        instRequest);
+                        InstallmentId installmentId = new InstallmentId(
+                                        UUID.fromString(addResponse.installments().get(0).id()));
+
+                        assertThat(addResponse.totalAmount()).isEqualByComparingTo("100.00");
+                        assertThat(addResponse.totalPaid()).isEqualByComparingTo("0.00");
+                        assertThat(addResponse.status()).isEqualTo("PENDING");
+
+                        // 3. Update Installment Amount (Increase)
+                        UpdateInstallmentRequest updateRequest = new UpdateInstallmentRequest(new BigDecimal("150.00"),
+                                        null);
+                        var updateResponse = installmentService.updateInstallment(testUser.getId(), invoice.getId(),
+                                        installmentId, updateRequest);
+
+                        assertThat(updateResponse.totalAmount()).isEqualByComparingTo("150.00");
+                        assertThat(updateResponse.totalPaid()).isEqualByComparingTo("0.00");
+                        assertThat(updateResponse.status()).isEqualTo("PENDING");
+
+                        // 4. Remove Installment
+                        var removeResponse = installmentService.removeInstallment(testUser.getId(), invoice.getId(),
+                                        installmentId);
+
+                        assertThat(removeResponse.totalAmount()).isEqualByComparingTo("0.00");
+                        assertThat(removeResponse.installments()).isEmpty();
+                }
+
+                @Test
+                @DisplayName("Should verify status regression from PAID to PARTIALLY_PAID when adding new installment")
+                void shouldVerifyStatusRegression() {
+                        Invoice invoice = createTestInvoice(testCustomer.getId(), "INV-FLOW-INST-002");
+
+                        // 1. Add Installment & Pay it fully
+                        var instReq1 = new CreateInstallmentRequest(new BigDecimal("100.00"),
+                                        LocalDate.now().plusDays(10).toString());
+                        var resp1 = installmentService.addInstallment(testUser.getId(), invoice.getId(), instReq1);
+                        InstallmentId instId1 = new InstallmentId(UUID.fromString(resp1.installments().get(0).id()));
+
+                        paymentService.recordPayment(testUser.getId(), invoice.getId(), instId1,
+                                        new CreatePaymentRequest(new BigDecimal("100.00"), LocalDate.now().toString()));
+
+                        // Verify PAID
+                        var invoiceAfterPay = invoiceLifecycleService.viewInvoice(testUser.getId(), invoice.getId());
+                        assertThat(invoiceAfterPay.status()).isEqualTo("PAID");
+                        assertThat(invoiceAfterPay.totalAmount()).isEqualByComparingTo("100.00");
+                        assertThat(invoiceAfterPay.totalPaid()).isEqualByComparingTo("100.00");
+
+                        // 2. Add New Installment
+                        var instReq2 = new CreateInstallmentRequest(new BigDecimal("50.00"),
+                                        LocalDate.now().plusDays(20).toString());
+                        var resp2 = installmentService.addInstallment(testUser.getId(), invoice.getId(), instReq2);
+
+                        // Verify Regression to PARTIALLY_PAID
+                        assertThat(resp2.status()).isEqualTo("PARTIALLY_PAID");
+                        assertThat(resp2.totalAmount()).isEqualByComparingTo("150.00"); // 100 + 50
+                        assertThat(resp2.totalPaid()).isEqualByComparingTo("100.00"); // Unchanged
+                        assertThat(resp2.remainingAmount()).isEqualByComparingTo("50.00");
+                }
+
+                @Test
+                @DisplayName("Should verify overdue status logic when adding past due installments")
+                void shouldVerifyOverdueLogic() {
+                        Invoice invoice = createTestInvoice(testCustomer.getId(), "INV-FLOW-INST-003");
+
+                        // 1. Add Past Due Installment
+                        var pastReq = new CreateInstallmentRequest(new BigDecimal("100.00"),
+                                        LocalDate.now().minusDays(1).toString());
+                        var resp1 = installmentService.addInstallment(testUser.getId(), invoice.getId(), pastReq);
+                        InstallmentId instId = new InstallmentId(UUID.fromString(resp1.installments().get(0).id()));
+
+                        assertThat(resp1.isOverdue()).isTrue();
+
+                        // 2. Update to Future Date
+                        var updateReq = new UpdateInstallmentRequest(null, LocalDate.now().plusDays(5).toString());
+                        var resp2 = installmentService.updateInstallment(testUser.getId(), invoice.getId(), instId,
+                                        updateReq);
+
+                        assertThat(resp2.isOverdue()).isFalse();
                 }
         }
 

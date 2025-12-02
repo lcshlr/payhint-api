@@ -39,9 +39,8 @@ public class PaymentProcessingService implements PaymentProcessingUseCase {
         @Override
         public InvoiceResponse recordPayment(UserId userId, InvoiceId invoiceId, InstallmentId installmentId,
                         CreatePaymentRequest request) {
-                Invoice invoice = invoiceRepository.findByIdAndOwner(invoiceId, userId)
-                                .orElseThrow(() -> new NotFoundException(
-                                                "Invoice with ID " + invoiceId + " not found for user ID " + userId));
+                Invoice invoice = invoiceRepository.findByIdAndOwner(invoiceId, userId).orElseThrow(
+                                () -> new NotFoundException("Invoice with ID not found for user ID " + userId));
                 Money amount = new Money(request.amount());
                 LocalDate paymentDate = LocalDate.parse(request.paymentDate(), DateTimeFormatter.ISO_LOCAL_DATE);
                 invoice.addPayment(installmentId, paymentDate, amount);
@@ -54,9 +53,8 @@ public class PaymentProcessingService implements PaymentProcessingUseCase {
         @Override
         public InvoiceResponse updatePayment(UserId userId, InvoiceId invoiceId, InstallmentId installmentId,
                         PaymentId paymentId, UpdatePaymentRequest request) {
-                Invoice invoice = invoiceRepository.findByIdAndOwner(invoiceId, userId)
-                                .orElseThrow(() -> new NotFoundException(
-                                                "Invoice with ID " + invoiceId + " not found for user ID " + userId));
+                Invoice invoice = invoiceRepository.findByIdAndOwner(invoiceId, userId).orElseThrow(
+                                () -> new NotFoundException("Invoice with ID not found for user ID " + userId));
                 Money newAmount = request.amount() != null ? new Money(request.amount()) : null;
                 LocalDate newPaymentDate = request.paymentDate() != null
                                 ? LocalDate.parse(request.paymentDate(), DateTimeFormatter.ISO_LOCAL_DATE)
@@ -72,8 +70,7 @@ public class PaymentProcessingService implements PaymentProcessingUseCase {
         public InvoiceResponse removePayment(UserId userId, InvoiceId invoiceId, InstallmentId installmentId,
                         PaymentId paymentId) {
                 Invoice invoice = invoiceRepository.findByIdAndOwner(invoiceId, userId)
-                                .orElseThrow(() -> new NotFoundException(
-                                                "Invoice with ID " + invoiceId + " not found for user ID " + userId));
+                                .orElseThrow(() -> new NotFoundException("Invoice not found for user ID " + userId));
                 invoice.removePayment(installmentId, paymentId);
                 Invoice savedInvoice = invoiceRepository.save(invoice);
                 logger.info("Payment removed from installment: " + installmentId.toString() + " for user ID " + userId);

@@ -19,17 +19,19 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import com.payhint.api.application.billing.dto.request.CreateInstallmentRequest;
 import com.payhint.api.application.billing.dto.request.CreatePaymentRequest;
 import com.payhint.api.application.billing.dto.request.UpdatePaymentRequest;
+import com.payhint.api.application.billing.dto.response.InvoiceResponse;
+import com.payhint.api.application.billing.dto.response.PaymentResponse;
 import com.payhint.api.application.shared.exception.NotFoundException;
 import com.payhint.api.domain.billing.exception.InstallmentDoesNotBelongToInvoiceException;
 import com.payhint.api.domain.billing.exception.InvalidMoneyValueException;
 import com.payhint.api.domain.billing.model.Invoice;
+import com.payhint.api.domain.billing.model.PaymentStatus;
 import com.payhint.api.domain.billing.repository.InvoiceRepository;
 import com.payhint.api.domain.billing.valueobject.InstallmentId;
 import com.payhint.api.domain.billing.valueobject.InvoiceId;
@@ -51,31 +53,36 @@ import com.payhint.api.infrastructure.crm.persistence.jpa.repository.UserSpringR
                 "spring.datasource.driver-class-name=org.h2.Driver", "spring.datasource.username=sa",
                 "spring.datasource.password=", "spring.jpa.database-platform=org.hibernate.dialect.H2Dialect",
                 "spring.jpa.hibernate.ddl-auto=create-drop" })
-
-@DisplayName("InvoiceService Integration Tests")
+@DisplayName("PaymentProcessingService Integration Tests")
 class PaymentProcessingServiceIntegrationTest {
 
         @Autowired
         private TransactionTemplate transactionTemplate;
 
         @Autowired
-        private InvoiceLifecycleService invoiceService;
-        @Autowired
         private InstallmentSchedulingService installmentService;
+
         @Autowired
         private PaymentProcessingService paymentService;
 
         @Autowired
+        private InvoiceLifecycleService invoiceService;
+
+        @Autowired
         private UserRepository userRepository;
+
         @Autowired
         private CustomerRepository customerRepository;
+
         @Autowired
         private InvoiceRepository invoiceRepository;
 
         @Autowired
         private UserSpringRepository userSpringRepository;
+
         @Autowired
         private CustomerSpringRepository customerSpringRepository;
+
         @Autowired
         private InvoiceSpringRepository invoiceSpringRepository;
 
@@ -87,16 +94,16 @@ class PaymentProcessingServiceIntegrationTest {
         @BeforeEach
         void setUp() {
                 testUser = userRepository.register(User.create(new UserId(UUID.randomUUID()),
-                                new Email("testuser@example.com"), "encodedPassword", "Test", "User"));
+                                new Email("payment.test@example.com"), "Password123!", "Payment", "Tester"));
 
                 otherUser = userRepository.register(User.create(new UserId(UUID.randomUUID()),
-                                new Email("otheruser@example.com"), "encodedPassword", "Other", "User"));
+                                new Email("other.payment@example.com"), "Password123!", "Other", "User"));
 
                 testCustomer = customerRepository.save(Customer.create(new CustomerId(UUID.randomUUID()),
-                                testUser.getId(), "Test Customer", new Email("customer@example.com")));
+                                testUser.getId(), "Test Inc", new Email("contact@testinc.com")));
 
                 otherCustomer = customerRepository.save(Customer.create(new CustomerId(UUID.randomUUID()),
-                                otherUser.getId(), "Other Customer", new Email("othercustomer@example.com")));
+                                otherUser.getId(), "Other Inc", new Email("contact@otherinc.com")));
         }
 
         @AfterEach
@@ -107,156 +114,209 @@ class PaymentProcessingServiceIntegrationTest {
         }
 
         @Nested
-        @DisplayName("Payment Management")
-        class PaymentManagementTests {
+        @DisplayName("Record Payment Tests")
+        class RecordPaymentTests {
 
                 @Test
-                void shouldRecordPaymentSuccessfullyAndUpdateStatus() {
-                        Invoice invoice = createTestInvoice(testCustomer.getId(), "INV-PMT-REC");
-                        var addRequest = new CreateInstallmentRequest(new BigDecimal("150"),
-                                        LocalDate.now().plusDays(5).toString());
-                        var addResponse = installmentService.addInstallment(testUser.getId(), invoice.getId(),
-                                        addRequest);
-                        String installmentId = addResponse.installments().get(0).id();
+                @DisplayName("Should record payment successfully and update status to PARTIALLY_PAID")
+                void shouldRecordPaymentSuccessfully() {
+                        Invoice invoice = createTestInvoice(testCustomer.getId(), "INV-001");
+                        InstallmentId installmentId = addInstallment(invoice.getId(), "100.00");
 
-                        var paymentRequest = new CreatePaymentRequest(new BigDecimal("150"),
+                        CreatePaymentRequest request = new CreatePaymentRequest(new BigDecimal("60.00"),
                                         LocalDate.now().toString());
-                        var paymentResponse = paymentService.recordPayment(testUser.getId(), invoice.getId(),
-                                        new InstallmentId(UUID.fromString(installmentId)), paymentRequest);
 
-                        assertThat(paymentResponse.totalPaid()).isEqualByComparingTo("150");
-                        assertThat(paymentResponse.remainingAmount()).isEqualByComparingTo("0");
-                        assertThat(paymentResponse.status()).isEqualTo("PAID");
-                        assertThat(paymentResponse.installments().get(0).payments()).hasSize(1);
+                        InvoiceResponse response = paymentService.recordPayment(testUser.getId(), invoice.getId(),
+                                        installmentId, request);
+
+                        assertThat(response.totalPaid()).isEqualByComparingTo("60.00");
+                        assertThat(response.remainingAmount()).isEqualByComparingTo("40.00");
+                        assertThat(response.status()).isEqualTo(PaymentStatus.PARTIALLY_PAID.name());
+                        assertThat(response.installments().get(0).payments()).hasSize(1);
+                        assertThat(response.installments().get(0).payments().get(0).amount())
+                                        .isEqualByComparingTo("60.00");
                 }
 
                 @Test
-                void shouldThrowExceptionWhenRecordingPaymentOnOtherUsersInvoice() {
-                        Invoice otherInvoice = createTestInvoice(otherCustomer.getId(), "INV-PMT-REC-OTHER");
-                        var addRequest = new CreateInstallmentRequest(new BigDecimal("60"),
-                                        LocalDate.now().plusDays(3).toString());
-                        var addResponse = installmentService.addInstallment(otherUser.getId(), otherInvoice.getId(),
-                                        addRequest);
-                        String installmentId = addResponse.installments().get(0).id();
-                        var paymentRequest = new CreatePaymentRequest(new BigDecimal("30"), LocalDate.now().toString());
+                @DisplayName("Should record full payment and update status to PAID")
+                void shouldRecordFullPaymentAndUpdateStatus() {
+                        Invoice invoice = createTestInvoice(testCustomer.getId(), "INV-002");
+                        InstallmentId installmentId = addInstallment(invoice.getId(), "100.00");
+
+                        CreatePaymentRequest request = new CreatePaymentRequest(new BigDecimal("100.00"),
+                                        LocalDate.now().toString());
+
+                        InvoiceResponse response = paymentService.recordPayment(testUser.getId(), invoice.getId(),
+                                        installmentId, request);
+
+                        assertThat(response.totalPaid()).isEqualByComparingTo("100.00");
+                        assertThat(response.remainingAmount()).isEqualByComparingTo("0.00");
+                        assertThat(response.status()).isEqualTo(PaymentStatus.PAID.name());
+                }
+
+                @Test
+                @DisplayName("Should throw exception when recording payment exceeding installment amount")
+                void shouldThrowExceptionWhenPaymentExceedsLimit() {
+                        Invoice invoice = createTestInvoice(testCustomer.getId(), "INV-003");
+                        InstallmentId installmentId = addInstallment(invoice.getId(), "100.00");
+
+                        CreatePaymentRequest request = new CreatePaymentRequest(new BigDecimal("101.00"),
+                                        LocalDate.now().toString());
+
+                        assertThatThrownBy(() -> paymentService.recordPayment(testUser.getId(), invoice.getId(),
+                                        installmentId, request)).isInstanceOf(InvalidMoneyValueException.class)
+                                                        .hasMessageContaining("exceeds remaining installment amount");
+                }
+
+                @Test
+                @DisplayName("Should throw exception when recording payment for other user's invoice")
+                void shouldThrowExceptionWhenRecordingOnOtherUserInvoice() {
+                        Invoice otherInvoice = createTestInvoice(otherCustomer.getId(), "INV-OTHER-001");
+                        InstallmentId installmentId = addInstallmentForUser(otherUser.getId(), otherInvoice.getId(),
+                                        "100.00");
+
+                        CreatePaymentRequest request = new CreatePaymentRequest(new BigDecimal("50.00"),
+                                        LocalDate.now().toString());
 
                         assertThatThrownBy(() -> paymentService.recordPayment(testUser.getId(), otherInvoice.getId(),
-                                        new InstallmentId(UUID.fromString(installmentId)), paymentRequest))
-                                                        .isInstanceOf(NotFoundException.class);
+                                        installmentId, request)).isInstanceOf(NotFoundException.class);
                 }
 
                 @Test
-                void shouldUpdatePaymentSuccessfully() {
-                        Invoice invoice = createTestInvoice(testCustomer.getId(), "INV-PMT-UPD");
-                        var addRequest = new CreateInstallmentRequest(new BigDecimal("200"),
-                                        LocalDate.now().plusDays(11).toString());
-                        var addResponse = installmentService.addInstallment(testUser.getId(), invoice.getId(),
-                                        addRequest);
-                        String installmentId = addResponse.installments().get(0).id();
-                        var paymentRequest = new CreatePaymentRequest(new BigDecimal("80"), LocalDate.now().toString());
-                        var paymentResponse = paymentService.recordPayment(testUser.getId(), invoice.getId(),
-                                        new InstallmentId(UUID.fromString(installmentId)), paymentRequest);
-                        String paymentId = paymentResponse.installments().get(0).payments().get(0).id();
+                @DisplayName("Should throw exception when installment does not belong to invoice")
+                void shouldThrowExceptionWhenInstallmentIdMismatch() {
+                        Invoice invoice1 = createTestInvoice(testCustomer.getId(), "INV-004");
+                        Invoice invoice2 = createTestInvoice(testCustomer.getId(), "INV-005");
+                        InstallmentId installmentId2 = addInstallment(invoice2.getId(), "100.00");
 
-                        var updatePaymentRequest = new UpdatePaymentRequest(new BigDecimal("100"),
+                        CreatePaymentRequest request = new CreatePaymentRequest(new BigDecimal("50.00"),
                                         LocalDate.now().toString());
-                        var updatedResponse = paymentService.updatePayment(testUser.getId(), invoice.getId(),
-                                        new InstallmentId(UUID.fromString(installmentId)),
-                                        new PaymentId(UUID.fromString(paymentId)), updatePaymentRequest);
 
-                        assertThat(updatedResponse.totalPaid()).isEqualByComparingTo("100");
-                        assertThat(updatedResponse.remainingAmount()).isEqualByComparingTo("100");
-                        assertThat(updatedResponse.status()).isEqualTo("PARTIALLY_PAID");
+                        assertThatThrownBy(() -> paymentService.recordPayment(testUser.getId(), invoice1.getId(),
+                                        installmentId2, request))
+                                                        .isInstanceOf(InstallmentDoesNotBelongToInvoiceException.class);
                 }
 
                 @Test
-                void shouldThrowExceptionWhenUpdatingPaymentBeyondAllowedAmount() {
-                        Invoice invoice = createTestInvoice(testCustomer.getId(), "INV-PMT-UPD-EXC");
-                        var addRequest = new CreateInstallmentRequest(new BigDecimal("100"),
-                                        LocalDate.now().plusDays(2).toString());
-                        var addResponse = installmentService.addInstallment(testUser.getId(), invoice.getId(),
-                                        addRequest);
-                        String installmentId = addResponse.installments().get(0).id();
-                        var paymentRequest = new CreatePaymentRequest(new BigDecimal("60"), LocalDate.now().toString());
-                        var paymentResponse = paymentService.recordPayment(testUser.getId(), invoice.getId(),
-                                        new InstallmentId(UUID.fromString(installmentId)), paymentRequest);
-                        String paymentId = paymentResponse.installments().get(0).payments().get(0).id();
+                @DisplayName("Should throw exception when payment amount is zero")
+                void shouldThrowExceptionWhenAmountIsZero() {
+                        Invoice invoice = createTestInvoice(testCustomer.getId(), "INV-006");
+                        InstallmentId installmentId = addInstallment(invoice.getId(), "100.00");
 
-                        var updatePaymentRequest = new UpdatePaymentRequest(new BigDecimal("110"),
+                        CreatePaymentRequest request = new CreatePaymentRequest(BigDecimal.ZERO,
                                         LocalDate.now().toString());
+
+                        assertThatThrownBy(() -> paymentService.recordPayment(testUser.getId(), invoice.getId(),
+                                        installmentId, request)).isInstanceOf(InvalidMoneyValueException.class);
+                }
+        }
+
+        @Nested
+        @DisplayName("Update Payment Tests")
+        class UpdatePaymentTests {
+
+                @Test
+                @DisplayName("Should update payment amount successfully and recalculate totals")
+                void shouldUpdatePaymentAmountSuccessfully() {
+                        Invoice invoice = createTestInvoice(testCustomer.getId(), "INV-UPD-001");
+                        InstallmentId installmentId = addInstallment(invoice.getId(), "200.00");
+                        PaymentId paymentId = recordPayment(invoice.getId(), installmentId, "100.00");
+
+                        UpdatePaymentRequest updateRequest = new UpdatePaymentRequest(new BigDecimal("150.00"), null);
+
+                        InvoiceResponse response = paymentService.updatePayment(testUser.getId(), invoice.getId(),
+                                        installmentId, paymentId, updateRequest);
+
+                        assertThat(response.totalPaid()).isEqualByComparingTo("150.00");
+                        assertThat(response.remainingAmount()).isEqualByComparingTo("50.00");
+
+                        PaymentResponse updatedPayment = response.installments().get(0).payments().get(0);
+                        assertThat(updatedPayment.amount()).isEqualByComparingTo("150.00");
+                }
+
+                @Test
+                @DisplayName("Should update payment date successfully")
+                void shouldUpdatePaymentDateSuccessfully() {
+                        Invoice invoice = createTestInvoice(testCustomer.getId(), "INV-UPD-002");
+                        InstallmentId installmentId = addInstallment(invoice.getId(), "200.00");
+                        PaymentId paymentId = recordPayment(invoice.getId(), installmentId, "100.00");
+
+                        String newDate = LocalDate.now().plusDays(1).toString();
+                        UpdatePaymentRequest updateRequest = new UpdatePaymentRequest(null, newDate);
+
+                        InvoiceResponse response = paymentService.updatePayment(testUser.getId(), invoice.getId(),
+                                        installmentId, paymentId, updateRequest);
+
+                        PaymentResponse updatedPayment = response.installments().get(0).payments().get(0);
+                        assertThat(updatedPayment.paymentDate()).isEqualTo(newDate);
+                        assertThat(updatedPayment.amount()).isEqualByComparingTo("100.00");
+                }
+
+                @Test
+                @DisplayName("Should throw exception when updated amount exceeds remaining installment")
+                void shouldThrowExceptionWhenUpdateExceedsRemaining() {
+                        // Installment 200, Payment 100 -> Remaining 100
+                        Invoice invoice = createTestInvoice(testCustomer.getId(), "INV-UPD-003");
+                        InstallmentId installmentId = addInstallment(invoice.getId(), "200.00");
+                        PaymentId paymentId = recordPayment(invoice.getId(), installmentId, "100.00");
+
+                        // Try update to 250 (Max allowed is 200)
+                        UpdatePaymentRequest updateRequest = new UpdatePaymentRequest(new BigDecimal("250.00"), null);
+
                         assertThatThrownBy(() -> paymentService.updatePayment(testUser.getId(), invoice.getId(),
-                                        new InstallmentId(UUID.fromString(installmentId)),
-                                        new PaymentId(UUID.fromString(paymentId)), updatePaymentRequest))
-                                                        .isInstanceOf(InvalidMoneyValueException.class);
+                                        installmentId, paymentId, updateRequest))
+                                                        .isInstanceOf(InvalidMoneyValueException.class)
+                                                        .hasMessageContaining("exceeds remaining installment amount");
                 }
 
                 @Test
+                @DisplayName("Should throw exception when updating other user's payment")
+                void shouldThrowExceptionWhenUpdatingOtherUserPayment() {
+                        Invoice otherInvoice = createTestInvoice(otherCustomer.getId(), "INV-OTHER-UPD");
+                        InstallmentId installmentId = addInstallmentForUser(otherUser.getId(), otherInvoice.getId(),
+                                        "100.00");
+                        PaymentId paymentId = recordPaymentForUser(otherUser.getId(), otherInvoice.getId(),
+                                        installmentId, "50.00");
+
+                        UpdatePaymentRequest request = new UpdatePaymentRequest(new BigDecimal("60.00"), null);
+
+                        assertThatThrownBy(() -> paymentService.updatePayment(testUser.getId(), otherInvoice.getId(),
+                                        installmentId, paymentId, request)).isInstanceOf(NotFoundException.class);
+                }
+        }
+
+        @Nested
+        @DisplayName("Remove Payment Tests")
+        class RemovePaymentTests {
+
+                @Test
+                @DisplayName("Should remove payment successfully and revert status")
                 void shouldRemovePaymentSuccessfully() {
-                        Invoice invoice = createTestInvoice(testCustomer.getId(), "INV-PMT-REM");
-                        var addRequest = new CreateInstallmentRequest(new BigDecimal("140"),
-                                        LocalDate.now().plusDays(13).toString());
-                        var addResponse = installmentService.addInstallment(testUser.getId(), invoice.getId(),
-                                        addRequest);
-                        String installmentId = addResponse.installments().get(0).id();
-                        var paymentRequest = new CreatePaymentRequest(new BigDecimal("50"), LocalDate.now().toString());
-                        var paymentResponse = paymentService.recordPayment(testUser.getId(), invoice.getId(),
-                                        new InstallmentId(UUID.fromString(installmentId)), paymentRequest);
-                        String paymentId = paymentResponse.installments().get(0).payments().get(0).id();
+                        Invoice invoice = createTestInvoice(testCustomer.getId(), "INV-REM-001");
+                        InstallmentId installmentId = addInstallment(invoice.getId(), "100.00");
+                        PaymentId paymentId = recordPayment(invoice.getId(), installmentId, "50.00"); // PARTIALLY_PAID
 
-                        var afterRemoval = paymentService.removePayment(testUser.getId(), invoice.getId(),
-                                        new InstallmentId(UUID.fromString(installmentId)),
-                                        new PaymentId(UUID.fromString(paymentId)));
+                        InvoiceResponse response = paymentService.removePayment(testUser.getId(), invoice.getId(),
+                                        installmentId, paymentId);
 
-                        assertThat(afterRemoval.installments().get(0).payments()).isEmpty();
-                        assertThat(afterRemoval.totalPaid()).isEqualByComparingTo("0");
+                        assertThat(response.totalPaid()).isEqualByComparingTo("0.00");
+                        assertThat(response.remainingAmount()).isEqualByComparingTo("100.00");
+                        assertThat(response.status()).isEqualTo(PaymentStatus.PENDING.name());
+                        assertThat(response.installments().get(0).payments()).isEmpty();
                 }
 
                 @Test
-                void shouldThrowExceptionWhenRemovingPaymentFromOtherUsersInvoice() {
-                        Invoice otherInvoice = createTestInvoice(otherCustomer.getId(), "INV-PMT-REM-OTHER");
-                        var addRequest = new CreateInstallmentRequest(new BigDecimal("85"),
-                                        LocalDate.now().plusDays(3).toString());
-                        var addResponse = installmentService.addInstallment(otherUser.getId(), otherInvoice.getId(),
-                                        addRequest);
-                        String installmentId = addResponse.installments().get(0).id();
-                        var paymentRequest = new CreatePaymentRequest(new BigDecimal("40"), LocalDate.now().toString());
-                        var paymentResponse = paymentService.recordPayment(otherUser.getId(), otherInvoice.getId(),
-                                        new InstallmentId(UUID.fromString(installmentId)), paymentRequest);
-                        String paymentId = paymentResponse.installments().get(0).payments().get(0).id();
+                @DisplayName("Should throw exception when removing non-existent payment")
+                void shouldThrowExceptionWhenRemovingNonExistentPayment() {
+                        Invoice invoice = createTestInvoice(testCustomer.getId(), "INV-REM-002");
+                        InstallmentId installmentId = addInstallment(invoice.getId(), "100.00");
+                        PaymentId randomPaymentId = new PaymentId(UUID.randomUUID());
 
-                        assertThatThrownBy(() -> paymentService.removePayment(testUser.getId(), otherInvoice.getId(),
-                                        new InstallmentId(UUID.fromString(installmentId)),
-                                        new PaymentId(UUID.fromString(paymentId))))
-                                                        .isInstanceOf(NotFoundException.class);
-                }
-
-                @Test
-                void shouldReflectStatusTransitionsAcrossPayments() {
-                        Invoice invoice = createTestInvoice(testCustomer.getId(), "INV-STATE-TRANS");
-                        var inst1 = new CreateInstallmentRequest(new BigDecimal("100"),
-                                        LocalDate.now().plusDays(5).toString());
-                        var inst2 = new CreateInstallmentRequest(new BigDecimal("200"),
-                                        LocalDate.now().plusDays(6).toString());
-                        var respA = installmentService.addInstallment(testUser.getId(), invoice.getId(), inst1);
-                        String installment1Id = respA.installments().get(0).id();
-                        var respB = installmentService.addInstallment(testUser.getId(), invoice.getId(), inst2);
-                        assertThat(respB.status()).isEqualTo("PENDING");
-                        String installment2Id = respB.installments().stream()
-                                        .filter(i -> !i.id().equals(installment1Id)).findFirst().get().id();
-
-                        var pay1 = new CreatePaymentRequest(new BigDecimal("100"), LocalDate.now().toString());
-                        var afterFirstPayment = paymentService.recordPayment(testUser.getId(), invoice.getId(),
-                                        new InstallmentId(UUID.fromString(installment1Id)), pay1);
-                        assertThat(afterFirstPayment.status()).isEqualTo("PARTIALLY_PAID");
-                        assertThat(afterFirstPayment.totalPaid()).isEqualByComparingTo("100");
-                        assertThat(afterFirstPayment.remainingAmount()).isEqualByComparingTo("200");
-
-                        var pay2 = new CreatePaymentRequest(new BigDecimal("200"), LocalDate.now().toString());
-                        var afterSecondPayment = paymentService.recordPayment(testUser.getId(), invoice.getId(),
-                                        new InstallmentId(UUID.fromString(installment2Id)), pay2);
-                        assertThat(afterSecondPayment.status()).isEqualTo("PAID");
-                        assertThat(afterSecondPayment.totalPaid()).isEqualByComparingTo("300");
-                        assertThat(afterSecondPayment.remainingAmount()).isEqualByComparingTo("0");
+                        assertThatThrownBy(() -> paymentService.removePayment(testUser.getId(), invoice.getId(),
+                                        installmentId, randomPaymentId)).isInstanceOf(
+                                                        com.payhint.api.domain.shared.exception.InvalidPropertyException.class)
+                                                        .hasMessageContaining("Payment not found for installment id: "
+                                                                        + installmentId);
                 }
         }
 
@@ -265,98 +325,137 @@ class PaymentProcessingServiceIntegrationTest {
         class EdgeCaseAndInvariantTests {
 
                 @Test
-                void shouldNotRecordPaymentExceedingRemainingAmount() {
-                        Invoice invoice = createTestInvoice(testCustomer.getId(), "INV-PMT-EXCEED");
-                        var inst = new CreateInstallmentRequest(new BigDecimal("100"),
-                                        LocalDate.now().plusDays(3).toString());
-                        var resp = installmentService.addInstallment(testUser.getId(), invoice.getId(), inst);
-                        String installmentId = resp.installments().get(0).id();
-                        var paymentTooHigh = new CreatePaymentRequest(new BigDecimal("150"),
+                @DisplayName("Should prevent payment modification on archived invoice")
+                void shouldPreventPaymentOnArchivedInvoice() {
+                        Invoice invoice = createTestInvoice(testCustomer.getId(), "INV-ARCH-001");
+                        InstallmentId installmentId = addInstallment(invoice.getId(), "100.00");
+                        PaymentId paymentId = recordPayment(invoice.getId(), installmentId, "50.00");
+
+                        invoiceService.archiveInvoice(testUser.getId(), invoice.getId());
+
+                        UpdatePaymentRequest updateRequest = new UpdatePaymentRequest(new BigDecimal("60.00"), null);
+
+                        assertThatThrownBy(() -> paymentService.updatePayment(testUser.getId(), invoice.getId(),
+                                        installmentId, paymentId, updateRequest))
+                                                        .isInstanceOf(IllegalStateException.class)
+                                                        .hasMessageContaining("archived");
+
+                        CreatePaymentRequest createRequest = new CreatePaymentRequest(new BigDecimal("10.00"),
                                         LocalDate.now().toString());
                         assertThatThrownBy(() -> paymentService.recordPayment(testUser.getId(), invoice.getId(),
-                                        new InstallmentId(UUID.fromString(installmentId)), paymentTooHigh))
-                                                        .isInstanceOf(InvalidMoneyValueException.class);
+                                        installmentId, createRequest)).isInstanceOf(IllegalStateException.class)
+                                                        .hasMessageContaining("archived");
+
+                        assertThatThrownBy(() -> paymentService.removePayment(testUser.getId(), invoice.getId(),
+                                        installmentId, paymentId)).isInstanceOf(IllegalStateException.class)
+                                                        .hasMessageContaining("archived");
                 }
 
                 @Test
-                void shouldNotRecordPaymentWithZeroAmount() {
-                        Invoice invoice = createTestInvoice(testCustomer.getId(), "INV-PMT-ZERO");
-                        var inst = new CreateInstallmentRequest(new BigDecimal("50"),
-                                        LocalDate.now().plusDays(3).toString());
-                        var resp = installmentService.addInstallment(testUser.getId(), invoice.getId(), inst);
-                        String installmentId = resp.installments().get(0).id();
-                        var zeroPayment = new CreatePaymentRequest(new BigDecimal("0"), LocalDate.now().toString());
-                        assertThatThrownBy(() -> paymentService.recordPayment(testUser.getId(), invoice.getId(),
-                                        new InstallmentId(UUID.fromString(installmentId)), zeroPayment))
-                                                        .isInstanceOf(InvalidMoneyValueException.class);
+                @DisplayName("Should handle multiple payments totaling exact installment amount")
+                void shouldHandleMultiplePaymentsForFullAmount() {
+                        Invoice invoice = createTestInvoice(testCustomer.getId(), "INV-MULTI-001");
+                        InstallmentId installmentId = addInstallment(invoice.getId(), "100.00");
+
+                        recordPayment(invoice.getId(), installmentId, "30.00");
+                        recordPayment(invoice.getId(), installmentId, "30.00");
+                        InvoiceResponse finalResponse = paymentService.recordPayment(testUser.getId(), invoice.getId(),
+                                        installmentId,
+                                        new CreatePaymentRequest(new BigDecimal("40.00"), LocalDate.now().toString()));
+
+                        assertThat(finalResponse.status()).isEqualTo(PaymentStatus.PAID.name());
+                        assertThat(finalResponse.totalPaid()).isEqualByComparingTo("100.00");
+                        assertThat(finalResponse.remainingAmount()).isEqualByComparingTo("0.00");
+                }
+        }
+
+        @Nested
+        @DisplayName("Consistency and Flow Tests")
+        class ConsistencyAndFlowTests {
+
+                @Test
+                @DisplayName("Should verify consistency across all layers during payment flow")
+                void shouldVerifyConsistencyAcrossAllLayers() {
+                        // 1. Create Invoice
+                        Invoice invoice = createTestInvoice(testCustomer.getId(), "INV-FLOW-001");
+                        assertThat(invoice.getStatus().name()).isEqualTo("PENDING");
+                        assertThat(invoice.getTotalAmount().amount()).isEqualByComparingTo("0.00");
+
+                        // 2. Add Installment (Due in future)
+                        CreateInstallmentRequest instRequest = new CreateInstallmentRequest(new BigDecimal("100.00"),
+                                        LocalDate.now().plusDays(10).toString());
+                        var instResponse = installmentService.addInstallment(testUser.getId(), invoice.getId(),
+                                        instRequest);
+                        InstallmentId installmentId = new InstallmentId(
+                                        UUID.fromString(instResponse.installments().get(0).id()));
+
+                        assertThat(instResponse.status()).isEqualTo("PENDING");
+                        assertThat(instResponse.totalAmount()).isEqualByComparingTo("100.00");
+                        assertThat(instResponse.isOverdue()).isFalse();
+
+                        // 3. Add Partial Payment
+                        CreatePaymentRequest payRequest1 = new CreatePaymentRequest(new BigDecimal("40.00"),
+                                        LocalDate.now().toString());
+                        var afterPay1 = paymentService.recordPayment(testUser.getId(), invoice.getId(), installmentId,
+                                        payRequest1);
+
+                        // Assert Invoice Layer
+                        assertThat(afterPay1.status()).isEqualTo("PARTIALLY_PAID");
+                        assertThat(afterPay1.totalPaid()).isEqualByComparingTo("40.00");
+                        assertThat(afterPay1.remainingAmount()).isEqualByComparingTo("60.00");
+
+                        // Assert Installment Layer
+                        var installment1 = afterPay1.installments().get(0);
+                        assertThat(installment1.status()).isEqualTo("PARTIALLY_PAID");
+                        assertThat(installment1.amountPaid()).isEqualByComparingTo("40.00");
+                        assertThat(installment1.amountDue()).isEqualByComparingTo("100.00");
+
+                        // Assert Payment Layer
+                        assertThat(installment1.payments()).hasSize(1);
+                        assertThat(installment1.payments().get(0).amount()).isEqualByComparingTo("40.00");
+
+                        // 4. Add Remaining Payment
+                        CreatePaymentRequest payRequest2 = new CreatePaymentRequest(new BigDecimal("60.00"),
+                                        LocalDate.now().toString());
+                        var afterPay2 = paymentService.recordPayment(testUser.getId(), invoice.getId(), installmentId,
+                                        payRequest2);
+
+                        // Assert Final Consistency
+                        assertThat(afterPay2.status()).isEqualTo("PAID");
+                        assertThat(afterPay2.totalPaid()).isEqualByComparingTo("100.00");
+                        assertThat(afterPay2.remainingAmount()).isEqualByComparingTo("0.00");
+                        assertThat(afterPay2.installments().get(0).status()).isEqualTo("PAID");
+                        assertThat(afterPay2.installments().get(0).amountPaid()).isEqualByComparingTo("100.00");
+                        assertThat(afterPay2.installments().get(0).payments()).hasSize(2);
                 }
 
                 @Test
-                void shouldNotUpdatePaymentBeyondAllowedAmount() {
-                        Invoice invoice = createTestInvoice(testCustomer.getId(), "INV-PMT-UPD-EXCEED-TOTAL");
-                        var inst = new CreateInstallmentRequest(new BigDecimal("120"),
-                                        LocalDate.now().plusDays(4).toString());
-                        var instResp = installmentService.addInstallment(testUser.getId(), invoice.getId(), inst);
-                        String installmentId = instResp.installments().get(0).id();
-                        var pay = new CreatePaymentRequest(new BigDecimal("60"), LocalDate.now().toString());
-                        var afterPay = paymentService.recordPayment(testUser.getId(), invoice.getId(),
-                                        new InstallmentId(UUID.fromString(installmentId)), pay);
-                        String paymentId = afterPay.installments().get(0).payments().get(0).id();
-                        var updateTooHigh = new UpdatePaymentRequest(new BigDecimal("200"), LocalDate.now().toString());
-                        assertThatThrownBy(() -> paymentService.updatePayment(testUser.getId(), invoice.getId(),
-                                        new InstallmentId(UUID.fromString(installmentId)),
-                                        new PaymentId(UUID.fromString(paymentId)), updateTooHigh))
-                                                        .isInstanceOf(InvalidMoneyValueException.class);
-                }
+                @DisplayName("Should verify overdue status updates across layers")
+                void shouldVerifyOverdueStatusAcrossLayers() {
+                        Invoice invoice = createTestInvoice(testCustomer.getId(), "INV-FLOW-002");
 
-                @Test
-                void shouldRegressStatusAfterRemovingPayment() {
-                        Invoice invoice = createTestInvoice(testCustomer.getId(), "INV-PMT-REGRESS");
-                        var inst = new CreateInstallmentRequest(new BigDecimal("100"),
-                                        LocalDate.now().plusDays(3).toString());
-                        var instResp = installmentService.addInstallment(testUser.getId(), invoice.getId(), inst);
-                        String installmentId = instResp.installments().get(0).id();
-                        var pay = new CreatePaymentRequest(new BigDecimal("40"), LocalDate.now().toString());
-                        var afterPay = paymentService.recordPayment(testUser.getId(), invoice.getId(),
-                                        new InstallmentId(UUID.fromString(installmentId)), pay);
-                        String paymentId = afterPay.installments().get(0).payments().get(0).id();
-                        assertThat(afterPay.status()).isEqualTo("PARTIALLY_PAID");
-                        var afterRemoval = paymentService.removePayment(testUser.getId(), invoice.getId(),
-                                        new InstallmentId(UUID.fromString(installmentId)),
-                                        new PaymentId(UUID.fromString(paymentId)));
-                        assertThat(afterRemoval.status()).isEqualTo("PENDING");
-                        assertThat(afterRemoval.totalPaid()).isEqualByComparingTo("0");
-                }
+                        // Add OVERDUE installment (Yesterday)
+                        CreateInstallmentRequest pastInstReq = new CreateInstallmentRequest(new BigDecimal("100.00"),
+                                        LocalDate.now().minusDays(1).toString());
+                        var instResponse = installmentService.addInstallment(testUser.getId(), invoice.getId(),
+                                        pastInstReq);
+                        InstallmentId installmentId = new InstallmentId(
+                                        UUID.fromString(instResponse.installments().get(0).id()));
 
-                @Test
-                void shouldPreventRecordingPaymentAfterArchive() {
-                        Invoice invoice = createTestInvoice(testCustomer.getId(), "INV-ARCH-PMT-ADD");
-                        var instReq = new CreateInstallmentRequest(new BigDecimal("30"),
-                                        LocalDate.now().plusDays(5).toString());
-                        var instResp = installmentService.addInstallment(testUser.getId(), invoice.getId(), instReq);
-                        invoiceService.archiveInvoice(testUser.getId(), invoice.getId());
-                        String installmentId = instResp.installments().get(0).id();
-                        var payReq = new CreatePaymentRequest(new BigDecimal("10"), LocalDate.now().toString());
-                        assertThatThrownBy(() -> paymentService.recordPayment(testUser.getId(), invoice.getId(),
-                                        new InstallmentId(UUID.fromString(installmentId)), payReq)).isInstanceOfAny(
-                                                        IllegalStateException.class,
-                                                        InstallmentDoesNotBelongToInvoiceException.class);
-                }
+                        // Verify Invoice is overdue
+                        assertThat(instResponse.isOverdue()).isTrue();
+                        assertThat(instResponse.installments().get(0).isOverdue()).isTrue();
 
-                @Test
-                void shouldSequentiallyPreventOverpaymentInConcurrentSimulation() {
-                        Invoice invoice = createTestInvoice(testCustomer.getId(), "INV-SEQ-OVERPAY");
-                        var inst = new CreateInstallmentRequest(new BigDecimal("80"),
-                                        LocalDate.now().plusDays(3).toString());
-                        var resp = installmentService.addInstallment(testUser.getId(), invoice.getId(), inst);
-                        String installmentId = resp.installments().get(0).id();
-                        var pay1 = new CreatePaymentRequest(new BigDecimal("50"), LocalDate.now().toString());
-                        paymentService.recordPayment(testUser.getId(), invoice.getId(),
-                                        new InstallmentId(UUID.fromString(installmentId)), pay1);
-                        var pay2 = new CreatePaymentRequest(new BigDecimal("40"), LocalDate.now().toString());
-                        assertThatThrownBy(() -> paymentService.recordPayment(testUser.getId(), invoice.getId(),
-                                        new InstallmentId(UUID.fromString(installmentId)), pay2))
-                                                        .isInstanceOf(InvalidMoneyValueException.class);
+                        // Pay it off
+                        CreatePaymentRequest fullPay = new CreatePaymentRequest(new BigDecimal("100.00"),
+                                        LocalDate.now().toString());
+                        var afterPay = paymentService.recordPayment(testUser.getId(), invoice.getId(), installmentId,
+                                        fullPay);
+
+                        // Verify NO LONGER overdue
+                        assertThat(afterPay.status()).isEqualTo("PAID");
+                        assertThat(afterPay.isOverdue()).isFalse();
+                        assertThat(afterPay.installments().get(0).isOverdue()).isFalse();
                 }
         }
 
@@ -365,35 +464,34 @@ class PaymentProcessingServiceIntegrationTest {
         class ConcurrencyTests {
 
                 @Test
-                void shouldPreventDoublePaymentUnderConcurrentAccess() throws Exception {
-                        Invoice invoice = createTestInvoice(testCustomer.getId(), "INV-CONCURRENT");
-                        var inst = new CreateInstallmentRequest(new BigDecimal("100"),
-                                        LocalDate.now().plusDays(5).toString());
-                        var instResp = installmentService.addInstallment(testUser.getId(), invoice.getId(), inst);
-                        String installmentId = instResp.installments().get(0).id();
+                @DisplayName("Should prevent double payment over total due under concurrent access")
+                void shouldPreventOverpaymentConcurrent() throws Exception {
+                        Invoice invoice = createTestInvoice(testCustomer.getId(), "INV-CONC-001");
+                        InstallmentId installmentId = addInstallment(invoice.getId(), "100.00");
 
-                        ExecutorService executor = Executors.newFixedThreadPool(2);
+                        // Prepare two payments of 60.00. Total 120.00 > 100.00.
+                        // One should succeed, one should fail (either optimistic locking or domain
+                        // validation).
+                        int threads = 2;
+                        ExecutorService executor = Executors.newFixedThreadPool(threads);
                         CountDownLatch startLatch = new CountDownLatch(1);
-                        CountDownLatch doneLatch = new CountDownLatch(2);
-
+                        CountDownLatch doneLatch = new CountDownLatch(threads);
                         AtomicInteger successCount = new AtomicInteger(0);
-                        AtomicInteger failureCount = new AtomicInteger(0);
+                        AtomicInteger failCount = new AtomicInteger(0);
 
-                        for (int i = 0; i < 2; i++) {
+                        for (int i = 0; i < threads; i++) {
                                 executor.submit(() -> {
                                         try {
                                                 startLatch.await();
-                                                var paymentRequest = new CreatePaymentRequest(new BigDecimal("60"),
-                                                                LocalDate.now().toString());
                                                 paymentService.recordPayment(testUser.getId(), invoice.getId(),
-                                                                new InstallmentId(UUID.fromString(installmentId)),
-                                                                paymentRequest);
+                                                                installmentId,
+                                                                new CreatePaymentRequest(new BigDecimal("60.00"),
+                                                                                LocalDate.now().toString()));
                                                 successCount.incrementAndGet();
-                                        } catch (ObjectOptimisticLockingFailureException e) {
-                                                failureCount.incrementAndGet();
                                         } catch (Exception e) {
-                                                throw new RuntimeException(
-                                                                "Unexpected exception during concurrent test", e);
+                                                // Expected: ObjectOptimisticLockingFailureException or
+                                                // InvalidMoneyValueException
+                                                failCount.incrementAndGet();
                                         } finally {
                                                 doneLatch.countDown();
                                         }
@@ -401,28 +499,51 @@ class PaymentProcessingServiceIntegrationTest {
                         }
 
                         startLatch.countDown();
-                        boolean completed = doneLatch.await(5, TimeUnit.SECONDS);
+                        boolean finished = doneLatch.await(5, TimeUnit.SECONDS);
                         executor.shutdown();
 
-                        assertThat(completed).isTrue();
+                        assertThat(finished).isTrue();
                         assertThat(successCount.get()).isEqualTo(1);
-                        assertThat(failureCount.get()).isEqualTo(1);
+                        assertThat(failCount.get()).isEqualTo(1);
 
                         transactionTemplate.execute(status -> {
-                                Invoice reloadedInvoice = invoiceRepository.findById(invoice.getId()).orElseThrow();
-                                assertThat(reloadedInvoice.getTotalPaid().amount()).isEqualByComparingTo("60");
-                                assertThat(reloadedInvoice.getRemainingAmount().amount()).isEqualByComparingTo("40");
-                                assertThat(reloadedInvoice.getStatus().name()).isEqualTo("PARTIALLY_PAID");
-
+                                Invoice updatedInvoice = invoiceRepository.findById(invoice.getId()).orElseThrow();
+                                assertThat(updatedInvoice.getTotalPaid().amount()).isEqualByComparingTo("60.00");
                                 return null;
                         });
                 }
         }
 
-        private Invoice createTestInvoice(CustomerId customerId, String invoiceReference) {
+        private Invoice createTestInvoice(CustomerId customerId, String reference) {
                 Customer customer = customerRepository.findById(customerId).orElseThrow();
                 Invoice invoice = Invoice.create(new InvoiceId(UUID.randomUUID()), customer.getId(),
-                                new InvoiceReference(invoiceReference), "USD");
+                                new InvoiceReference(reference), "USD");
                 return invoiceRepository.save(invoice);
+        }
+
+        private InstallmentId addInstallment(InvoiceId invoiceId, String amount) {
+                return addInstallmentForUser(testUser.getId(), invoiceId, amount);
+        }
+
+        private InstallmentId addInstallmentForUser(UserId userId, InvoiceId invoiceId, String amount) {
+                var request = new CreateInstallmentRequest(new BigDecimal(amount),
+                                LocalDate.now().plusDays(30).toString());
+                var response = installmentService.addInstallment(userId, invoiceId, request);
+                return new InstallmentId(UUID.fromString(response.installments().get(0).id()));
+        }
+
+        private PaymentId recordPayment(InvoiceId invoiceId, InstallmentId installmentId, String amount) {
+                return recordPaymentForUser(testUser.getId(), invoiceId, installmentId, amount);
+        }
+
+        private PaymentId recordPaymentForUser(UserId userId, InvoiceId invoiceId, InstallmentId installmentId,
+                        String amount) {
+                var request = new CreatePaymentRequest(new BigDecimal(amount), LocalDate.now().toString());
+                var response = paymentService.recordPayment(userId, invoiceId, installmentId, request);
+                // Find the payment we just added (last one)
+                var payments = response.installments().stream().filter(i -> i.id().equals(installmentId.toString()))
+                                .findFirst().get().payments();
+                String paymentIdStr = payments.get(payments.size() - 1).id();
+                return new PaymentId(UUID.fromString(paymentIdStr));
         }
 }

@@ -73,8 +73,8 @@ public class Installment {
     }
 
     public Payment findPaymentById(@NonNull PaymentId paymentId) {
-        return this.payments.stream().filter(pmt -> pmt.getId().equals(paymentId)).findFirst().orElseThrow(
-                () -> new InvalidPropertyException("Payment with id " + paymentId + " not found in installment"));
+        return this.payments.stream().filter(pmt -> pmt.getId().equals(paymentId)).findFirst()
+                .orElseThrow(() -> new InvalidPropertyException("Payment not found for installment id: " + this.id));
     }
 
     private void updateStatus() {
