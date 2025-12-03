@@ -16,7 +16,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.TestPropertySource;
 
 import com.payhint.api.application.billing.dto.request.CreateInstallmentRequest;
 import com.payhint.api.application.billing.dto.request.CreateInvoiceRequest;
@@ -37,9 +36,9 @@ import com.payhint.api.domain.crm.model.User;
 import com.payhint.api.domain.crm.repository.CustomerRepository;
 import com.payhint.api.domain.crm.repository.UserRepository;
 import com.payhint.api.domain.crm.valueobject.CustomerId;
-import com.payhint.api.domain.crm.valueobject.Email;
 import com.payhint.api.domain.crm.valueobject.UserId;
 import com.payhint.api.domain.shared.exception.InvalidPropertyException;
+import com.payhint.api.domain.shared.valueobject.Email;
 import com.payhint.api.infrastructure.billing.persistence.jpa.repository.InvoiceSpringRepository;
 import com.payhint.api.infrastructure.crm.persistence.jpa.repository.CustomerSpringRepository;
 import com.payhint.api.infrastructure.crm.persistence.jpa.repository.UserSpringRepository;

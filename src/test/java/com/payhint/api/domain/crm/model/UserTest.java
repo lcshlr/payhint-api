@@ -9,8 +9,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-import com.payhint.api.domain.crm.valueobject.Email;
 import com.payhint.api.domain.crm.valueobject.UserId;
+import com.payhint.api.domain.shared.valueobject.Email;
 
 @DisplayName("User Domain Model Tests")
 class UserTest {

@@ -64,6 +64,26 @@ public class Installment {
         return this.status != PaymentStatus.PAID && LocalDate.now().isAfter(dueDate);
     }
 
+    /**
+     * Performs a strict consistency check to determine if the installment is
+     * overdue.
+     *
+     * This ignores the cached 'status' and 'amountPaid' fields and recalculates the
+     * total paid directly from the list of payments (Source of Truth). It also
+     * checks the due date against the current date.
+     * 
+     * Use this method before triggering critical side effects like notifications.
+     */
+    public boolean isStrictlyOverdue() {
+        if (!LocalDate.now().isAfter(dueDate)) {
+            return false;
+        }
+
+        Money realTotalPaid = this.payments.stream().map(Payment::getAmount).reduce(Money.ZERO, Money::add);
+
+        return realTotalPaid.compareTo(this.amountDue) < 0;
+    }
+
     public Money getRemainingAmount() {
         return amountDue.subtract(amountPaid);
     }

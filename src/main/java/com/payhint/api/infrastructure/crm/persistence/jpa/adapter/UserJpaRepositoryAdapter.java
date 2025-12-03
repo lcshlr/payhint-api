@@ -6,8 +6,8 @@ import org.springframework.stereotype.Repository;
 
 import com.payhint.api.domain.crm.model.User;
 import com.payhint.api.domain.crm.repository.UserRepository;
-import com.payhint.api.domain.crm.valueobject.Email;
 import com.payhint.api.domain.crm.valueobject.UserId;
+import com.payhint.api.domain.shared.valueobject.Email;
 import com.payhint.api.infrastructure.crm.persistence.jpa.entity.UserJpaEntity;
 import com.payhint.api.infrastructure.crm.persistence.jpa.mapper.UserPersistenceMapper;
 import com.payhint.api.infrastructure.crm.persistence.jpa.repository.UserSpringRepository;

@@ -1,4 +1,4 @@
-package com.payhint.api.domain.crm.valueobject;
+package com.payhint.api.domain.shared.valueobject;
 
 import java.util.regex.Pattern;
 

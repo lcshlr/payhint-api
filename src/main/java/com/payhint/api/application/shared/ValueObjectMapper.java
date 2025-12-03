@@ -5,8 +5,8 @@ import java.util.UUID;
 import org.mapstruct.Mapper;
 
 import com.payhint.api.domain.crm.valueobject.CustomerId;
-import com.payhint.api.domain.crm.valueobject.Email;
 import com.payhint.api.domain.crm.valueobject.UserId;
+import com.payhint.api.domain.shared.valueobject.Email;
 
 @Mapper(componentModel = "spring")
 public interface ValueObjectMapper {

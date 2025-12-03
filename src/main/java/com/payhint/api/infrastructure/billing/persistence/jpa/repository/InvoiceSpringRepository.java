@@ -11,6 +11,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Repository;
 
+import com.payhint.api.application.notification.dto.OverdueInstallmentDto;
 import com.payhint.api.domain.billing.model.PaymentStatus;
 import com.payhint.api.infrastructure.billing.persistence.jpa.entity.InvoiceJpaEntity;
 
@@ -60,4 +61,18 @@ public interface InvoiceSpringRepository extends JpaRepository<InvoiceJpaEntity,
 
     @Query("SELECT DISTINCT i FROM InvoiceJpaEntity i LEFT JOIN FETCH i.installments inst LEFT JOIN FETCH inst.payments WHERE i.id = :invoiceId AND i.customer.user.id = :userId")
     Optional<InvoiceJpaEntity> findByIdAndOwner(@NonNull UUID invoiceId, @NonNull UUID userId);
+
+    @Query("""
+                SELECT
+                    inst.id, i.id, i.customer.user.id, inst.dueDate
+                FROM InstallmentJpaEntity inst
+                JOIN inst.invoice i
+                WHERE inst.status != 'PAID'
+                AND inst.dueDate < CURRENT_DATE
+                AND NOT EXISTS (
+                    SELECT 1 FROM NotificationLogJpaEntity log
+                    WHERE log.installmentId = inst.id
+                )
+            """)
+    List<OverdueInstallmentDto> findOverdueInstallmentsNotNotified();
 }

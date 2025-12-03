@@ -20,8 +20,8 @@ import com.payhint.api.application.crm.usecase.AuthenticationUseCase;
 import com.payhint.api.application.shared.exception.AlreadyExistsException;
 import com.payhint.api.domain.crm.model.User;
 import com.payhint.api.domain.crm.repository.UserRepository;
-import com.payhint.api.domain.crm.valueobject.Email;
 import com.payhint.api.domain.crm.valueobject.UserId;
+import com.payhint.api.domain.shared.valueobject.Email;
 import com.payhint.api.infrastructure.shared.security.JwtTokenProvider;
 
 @Service

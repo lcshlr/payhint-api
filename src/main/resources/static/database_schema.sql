@@ -14,7 +14,7 @@ CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     first_name VARCHAR(100) NOT NULL,
     last_name VARCHAR(100) NOT NULL,
-    email VARCHAR(100) NOT NULL UNIQUE,
+    email VARCHAR(255) NOT NULL UNIQUE,
     password VARCHAR(255) NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -33,7 +33,7 @@ CREATE TABLE customers (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     company_name VARCHAR(100) NOT NULL,
-    contact_email VARCHAR(100) NOT NULL,
+    contact_email VARCHAR(255) NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT uq_user_company_name UNIQUE (user_id, company_name)
@@ -87,10 +87,11 @@ CREATE TABLE payments (
 
 CREATE TABLE notification_logs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    installment_id UUID NOT NULL REFERENCES installments(id) ON DELETE CASCADE,
-    recipient_address VARCHAR(50) NOT NULL,
+    installment_id UUID NOT NULL REFERENCES installments(id),
+    recipient_address VARCHAR(255) NOT NULL,
     sent_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    status notification_status_enum NOT NULL
+    error_message TEXT,
+    status VARCHAR(20) NOT NULL
 );
 
 
