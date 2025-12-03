@@ -19,7 +19,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.TestPropertySource;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import com.payhint.api.application.billing.dto.request.CreateInstallmentRequest;
@@ -49,10 +49,7 @@ import com.payhint.api.infrastructure.crm.persistence.jpa.repository.CustomerSpr
 import com.payhint.api.infrastructure.crm.persistence.jpa.repository.UserSpringRepository;
 
 @SpringBootTest
-@TestPropertySource(properties = { "spring.datasource.url=jdbc:h2:mem:testdb",
-                "spring.datasource.driver-class-name=org.h2.Driver", "spring.datasource.username=sa",
-                "spring.datasource.password=", "spring.jpa.database-platform=org.hibernate.dialect.H2Dialect",
-                "spring.jpa.hibernate.ddl-auto=create-drop" })
+@ActiveProfiles("test")
 @DisplayName("PaymentProcessingService Integration Tests")
 class PaymentProcessingServiceIntegrationTest {
 
@@ -93,6 +90,10 @@ class PaymentProcessingServiceIntegrationTest {
 
         @BeforeEach
         void setUp() {
+                invoiceSpringRepository.deleteAll();
+                customerSpringRepository.deleteAll();
+                userSpringRepository.deleteAll();
+
                 testUser = userRepository.register(User.create(new UserId(UUID.randomUUID()),
                                 new Email("payment.test@example.com"), "Password123!", "Payment", "Tester"));
 

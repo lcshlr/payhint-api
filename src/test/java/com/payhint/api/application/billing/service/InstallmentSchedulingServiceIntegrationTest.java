@@ -8,13 +8,14 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.TestPropertySource;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.payhint.api.application.billing.dto.request.CreateInstallmentRequest;
@@ -42,11 +43,7 @@ import com.payhint.api.infrastructure.crm.persistence.jpa.repository.CustomerSpr
 import com.payhint.api.infrastructure.crm.persistence.jpa.repository.UserSpringRepository;
 
 @SpringBootTest
-@TestPropertySource(properties = { "spring.datasource.url=jdbc:h2:mem:testdb",
-                "spring.datasource.driver-class-name=org.h2.Driver", "spring.datasource.username=sa",
-                "spring.datasource.password=", "spring.jpa.database-platform=org.hibernate.dialect.H2Dialect",
-                "spring.jpa.hibernate.ddl-auto=create-drop" })
-@Transactional
+@ActiveProfiles("test")
 @DisplayName("InstallmentSchedulingService Integration Tests")
 class InstallmentSchedulingServiceIntegrationTest {
 
@@ -95,6 +92,13 @@ class InstallmentSchedulingServiceIntegrationTest {
 
                 otherCustomer = customerRepository.save(Customer.create(new CustomerId(UUID.randomUUID()),
                                 otherUser.getId(), "Other Customer", new Email("othercustomer@example.com")));
+        }
+
+        @AfterEach
+        void tearDown() {
+                invoiceSpringRepository.deleteAll();
+                customerSpringRepository.deleteAll();
+                userSpringRepository.deleteAll();
         }
 
         @Nested

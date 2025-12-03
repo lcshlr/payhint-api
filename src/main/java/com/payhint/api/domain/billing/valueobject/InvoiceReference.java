@@ -5,6 +5,7 @@ public record InvoiceReference(String value) {
         if (value == null || value.isBlank()) {
             throw new IllegalArgumentException("InvoiceReference value cannot be null or blank.");
         }
+        value = value.trim();
     }
 
     @Override

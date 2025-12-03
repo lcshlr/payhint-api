@@ -94,17 +94,6 @@ public class InstallmentJpaEntity implements Persistable<UUID> {
         this.isNew = false;
     }
 
-    @PrePersist
-    protected void onCreate() {
-        this.createdAt = LocalDateTime.now();
-        this.updatedAt = LocalDateTime.now();
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
-        this.updatedAt = LocalDateTime.now();
-    }
-
     public void addPayment(PaymentJpaEntity payment) {
         payments.add(payment);
         payment.setInstallment(this);

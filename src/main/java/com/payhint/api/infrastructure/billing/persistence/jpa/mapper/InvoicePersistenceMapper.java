@@ -27,6 +27,7 @@ public interface InvoicePersistenceMapper {
 
     @Mapping(target = "customer", ignore = true)
     @Mapping(target = "installments", ignore = true)
+    @Mapping(target = "isArchived", source = "archived")
     InvoiceJpaEntity toEntityInternal(Invoice invoice);
 
     default InvoiceJpaEntity toEntity(Invoice invoice) {

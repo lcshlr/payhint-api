@@ -13,6 +13,7 @@ import java.time.LocalDate;
 import java.util.Collections;
 import java.util.UUID;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -24,7 +25,6 @@ import org.springframework.http.MediaType;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.transaction.annotation.Transactional;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.payhint.api.application.billing.dto.request.CreatePaymentRequest;
@@ -53,7 +53,6 @@ import com.payhint.api.infrastructure.shared.security.UserPrincipal;
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
-@Transactional
 @DisplayName("PaymentController Integration Tests")
 class PaymentControllerIntegrationTest {
 
@@ -118,6 +117,14 @@ class PaymentControllerIntegrationTest {
                                 testUser.getPassword(),
                                 Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER")));
                 jwtToken = jwtTokenProvider.generateToken(userPrincipal);
+        }
+
+        @AfterEach
+        void tearDown() {
+                invoiceSpringRepository.deleteAll();
+                customerSpringRepository.deleteAll();
+                userSpringRepository.deleteAll();
+                rateLimitingFilter.clearBuckets();
         }
 
         @Nested

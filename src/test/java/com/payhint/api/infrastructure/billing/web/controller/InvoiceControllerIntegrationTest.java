@@ -3,7 +3,6 @@ package com.payhint.api.infrastructure.billing.web.controller;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.hasSize;
-import static org.hamcrest.Matchers.is;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -17,6 +16,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -28,7 +28,6 @@ import org.springframework.http.MediaType;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.transaction.annotation.Transactional;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.payhint.api.application.billing.dto.request.CreateInstallmentRequest;
@@ -55,7 +54,6 @@ import com.payhint.api.infrastructure.shared.security.UserPrincipal;
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
-@Transactional
 @DisplayName("InvoiceController Integration Tests")
 class InvoiceControllerIntegrationTest {
 
@@ -112,6 +110,14 @@ class InvoiceControllerIntegrationTest {
                                 testUser.getPassword(),
                                 Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER")));
                 jwtToken = jwtTokenProvider.generateToken(userPrincipal);
+        }
+
+        @AfterEach
+        void tearDown() {
+                invoiceSpringRepository.deleteAll();
+                customerSpringRepository.deleteAll();
+                userSpringRepository.deleteAll();
+                rateLimitingFilter.clearBuckets();
         }
 
         @Nested

@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.util.Objects;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -28,7 +29,6 @@ import com.payhint.api.infrastructure.shared.security.RateLimitingFilter;
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
-@Transactional
 @DisplayName("AuthenticationController Integration Tests")
 class AuthenticationControllerIntegrationTest {
 
@@ -46,6 +46,12 @@ class AuthenticationControllerIntegrationTest {
 
         @BeforeEach
         void setUp() {
+                userSpringRepository.deleteAll();
+                rateLimitingFilter.clearBuckets();
+        }
+
+        @AfterEach
+        void tearDown() {
                 userSpringRepository.deleteAll();
                 rateLimitingFilter.clearBuckets();
         }

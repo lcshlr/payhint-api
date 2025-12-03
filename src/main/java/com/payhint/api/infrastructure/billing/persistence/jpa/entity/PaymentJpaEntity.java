@@ -62,21 +62,9 @@ public class PaymentJpaEntity implements Persistable<UUID> {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
-    @PrePersist
-    protected void onCreate() {
-        createdAt = LocalDateTime.now();
-        updatedAt = LocalDateTime.now();
-        this.isNew = false;
-    }
-
     @PostLoad
     protected void onPostLoad() {
         this.isNew = false;
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
-        updatedAt = LocalDateTime.now();
     }
 
     @Override

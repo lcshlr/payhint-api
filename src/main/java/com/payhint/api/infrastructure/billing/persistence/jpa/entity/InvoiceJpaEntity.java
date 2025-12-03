@@ -91,22 +91,9 @@ public class InvoiceJpaEntity implements Persistable<UUID> {
     @Builder.Default
     private Set<InstallmentJpaEntity> installments = new LinkedHashSet<>();
 
-    @PrePersist
-    protected void onCreate() {
-        createdAt = LocalDateTime.now();
-        updatedAt = LocalDateTime.now();
-        invoiceReference = invoiceReference.trim().toUpperCase();
-        this.isNew = false;
-    }
-
     @PostLoad
     protected void onPostLoad() {
         this.isNew = false;
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
-        updatedAt = LocalDateTime.now();
     }
 
     @Override

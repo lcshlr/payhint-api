@@ -42,11 +42,11 @@ public interface InvoiceSpringRepository extends JpaRepository<InvoiceJpaEntity,
         boolean getIsOverdue();
     }
 
-    @Query("SELECT DISTINCT i FROM InvoiceJpaEntity i LEFT JOIN FETCH i.installments WHERE i.id = :id")
+    @Query("SELECT DISTINCT i FROM InvoiceJpaEntity i LEFT JOIN FETCH i.installments inst LEFT JOIN FETCH inst.payments WHERE i.id = :id")
     @NonNull
     Optional<InvoiceJpaEntity> findById(@NonNull UUID id);
 
-    @Query("SELECT DISTINCT i FROM InvoiceJpaEntity i LEFT JOIN FETCH i.installments WHERE i.customer.id = :customerId")
+    @Query("SELECT DISTINCT i FROM InvoiceJpaEntity i LEFT JOIN FETCH i.installments inst LEFT JOIN FETCH inst.payments WHERE i.customer.id = :customerId")
     List<InvoiceJpaEntity> findAllByCustomerId(@NonNull UUID customerId);
 
     @Query("SELECT i.id AS id, i.customer.id AS customerId, i.invoiceReference AS invoiceReference, i.totalAmount AS totalAmount, i.totalPaid AS totalPaid, i.currency AS currency, i.status AS status, i.createdAt AS createdAt, i.updatedAt AS updatedAt, i.lastStatusChangeAt AS lastStatusChangeAt, i.isArchived AS isArchived, CASE WHEN EXISTS (SELECT 1 FROM InstallmentJpaEntity inst WHERE inst.invoice.id = i.id AND inst.dueDate < CURRENT_DATE AND inst.status <> 'PAID') THEN true ELSE false END AS isOverdue FROM InvoiceJpaEntity i WHERE i.customer.user.id = :userId")
@@ -58,6 +58,6 @@ public interface InvoiceSpringRepository extends JpaRepository<InvoiceJpaEntity,
     Optional<InvoiceJpaEntity> findByCustomerIdAndInvoiceReference(@NonNull UUID customerId,
             @NonNull String invoiceReference);
 
-    @Query("SELECT DISTINCT i FROM InvoiceJpaEntity i LEFT JOIN FETCH i.installments WHERE i.id = :invoiceId AND i.customer.user.id = :userId")
+    @Query("SELECT DISTINCT i FROM InvoiceJpaEntity i LEFT JOIN FETCH i.installments inst LEFT JOIN FETCH inst.payments WHERE i.id = :invoiceId AND i.customer.user.id = :userId")
     Optional<InvoiceJpaEntity> findByIdAndOwner(@NonNull UUID invoiceId, @NonNull UUID userId);
 }

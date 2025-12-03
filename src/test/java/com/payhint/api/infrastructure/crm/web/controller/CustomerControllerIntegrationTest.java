@@ -11,10 +11,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.Objects;
 import java.util.UUID;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -26,7 +28,6 @@ import org.springframework.http.MediaType;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.transaction.annotation.Transactional;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.payhint.api.application.crm.dto.request.CreateCustomerRequest;
@@ -50,7 +51,6 @@ import com.payhint.api.infrastructure.shared.security.UserPrincipal;
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
-@Transactional
 @DisplayName("CustomerController Integration Tests")
 class CustomerControllerIntegrationTest {
 
@@ -103,6 +103,12 @@ class CustomerControllerIntegrationTest {
                                 testUser.getPassword(),
                                 Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER")));
                 jwtToken = jwtTokenProvider.generateToken(userPrincipal);
+        }
+
+        @AfterEach
+        void tearDown() {
+                customerSpringRepository.deleteAll();
+                userSpringRepository.deleteAll();
         }
 
         @Nested
@@ -359,18 +365,22 @@ class CustomerControllerIntegrationTest {
                         customer = customerRepository.save(customer);
 
                         var customerEntity = customerSpringRepository.findById(customer.getId().value()).get();
-
+                        LocalDateTime now = LocalDateTime.now();
                         InvoiceJpaEntity invoiceEntity = InvoiceJpaEntity.builder().id(UUID.randomUUID())
-                                        .invoiceReference("INV-2025-001").currency("EUR").build();
+                                        .invoiceReference("INV-2025-001").totalAmount(BigDecimal.valueOf(500))
+                                        .totalPaid(BigDecimal.valueOf(0)).currency("EUR").createdAt(now).updatedAt(now)
+                                        .lastStatusChangeAt(now).status("PARTIALLY_PAID").build();
                         invoiceEntity.setCustomer(customerEntity);
 
                         InstallmentJpaEntity instEntity = InstallmentJpaEntity.builder().id(UUID.randomUUID())
-                                        .amountDue(BigDecimal.valueOf(100)).dueDate(LocalDate.now().plusDays(30))
-                                        .build();
+                                        .amountDue(BigDecimal.valueOf(100)).amountPaid(BigDecimal.valueOf(50))
+                                        .dueDate(LocalDate.now().plusDays(30)).status("PARTIALLY_PAID").createdAt(now)
+                                        .updatedAt(now).lastStatusChangeAt(now).build();
                         invoiceEntity.addInstallment(instEntity);
 
                         PaymentJpaEntity paymentEntity = PaymentJpaEntity.builder().id(UUID.randomUUID())
-                                        .amount(BigDecimal.valueOf(50)).paymentDate(LocalDate.now()).build();
+                                        .amount(BigDecimal.valueOf(50)).paymentDate(LocalDate.now()).createdAt(now)
+                                        .updatedAt(now).build();
                         instEntity.addPayment(paymentEntity);
 
                         invoiceEntity = invoiceSpringRepository.save(invoiceEntity);
@@ -381,10 +391,10 @@ class CustomerControllerIntegrationTest {
                                         .andExpect(jsonPath("$[0].id").value(invoiceEntity.getId().toString()))
                                         .andExpect(jsonPath("$[0].invoiceReference").value("INV-2025-001"))
                                         .andExpect(jsonPath("$[0].totalAmount").isNotEmpty())
-                                        .andExpect(jsonPath("$[0].installments").isArray())
-                                        .andExpect(jsonPath("$[0].installments.length()").value(1))
-                                        .andExpect(jsonPath("$[0].installments[0].payments").isArray())
-                                        .andExpect(jsonPath("$[0].installments[0].payments.length()").value(1));
+                                        .andExpect(jsonPath("$[0].totalPaid").isNotEmpty())
+                                        .andExpect(jsonPath("$[0].currency").value("EUR"))
+                                        .andExpect(jsonPath("$[0].status").value("PARTIALLY_PAID"))
+                                        .andExpect(jsonPath("$[0].isOverdue").value(false));
                 }
 
                 @Test
@@ -412,8 +422,12 @@ class CustomerControllerIntegrationTest {
 
                         var anotherCustomerEntity = customerSpringRepository.findById(anotherCustomer.getId().value())
                                         .get();
+
+                        LocalDateTime now = LocalDateTime.now();
                         InvoiceJpaEntity invoiceEntity = InvoiceJpaEntity.builder().id(UUID.randomUUID())
-                                        .invoiceReference("INV-2025-002").currency("EUR").build();
+                                        .invoiceReference("INV-2025-002").totalAmount(BigDecimal.valueOf(500))
+                                        .totalPaid(BigDecimal.valueOf(0)).currency("EUR").status("PENDING")
+                                        .createdAt(now).updatedAt(now).lastStatusChangeAt(now).build();
                         invoiceEntity.setCustomer(anotherCustomerEntity);
                         invoiceEntity = invoiceSpringRepository.save(invoiceEntity);
 
