@@ -14,6 +14,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PostLoad;
+import jakarta.persistence.PostPersist;
 import jakarta.persistence.Table;
 import jakarta.persistence.Transient;
 import lombok.AllArgsConstructor;
@@ -61,6 +62,7 @@ public class PaymentJpaEntity implements Persistable<UUID> {
     private LocalDateTime updatedAt;
 
     @PostLoad
+    @PostPersist
     protected void onPostLoad() {
         this.isNew = false;
     }

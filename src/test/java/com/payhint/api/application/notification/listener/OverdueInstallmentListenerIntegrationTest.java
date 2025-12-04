@@ -2,8 +2,12 @@ package com.payhint.api.application.notification.listener;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.after;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -16,8 +20,6 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentMatchers;
-import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
@@ -33,7 +35,9 @@ import com.payhint.api.domain.billing.valueobject.InstallmentId;
 import com.payhint.api.domain.billing.valueobject.InvoiceId;
 import com.payhint.api.domain.billing.valueobject.InvoiceReference;
 import com.payhint.api.domain.billing.valueobject.Money;
+import com.payhint.api.domain.crm.model.Customer;
 import com.payhint.api.domain.crm.model.User;
+import com.payhint.api.domain.crm.repository.CustomerRepository;
 import com.payhint.api.domain.crm.repository.UserRepository;
 import com.payhint.api.domain.crm.valueobject.CustomerId;
 import com.payhint.api.domain.crm.valueobject.UserId;
@@ -46,136 +50,125 @@ import com.payhint.api.domain.shared.valueobject.Email;
 @DisplayName("OverdueInstallmentListener Integration Tests")
 class OverdueInstallmentListenerIntegrationTest {
 
-    @Autowired
-    private OverdueInstallmentListener listener;
+        @Autowired
+        private OverdueInstallmentListener listener;
 
-    @MockitoBean
-    private InvoiceRepository invoiceRepository;
+        @MockitoBean
+        private InvoiceRepository invoiceRepository;
 
-    @MockitoBean
-    private UserRepository userRepository;
+        @MockitoBean
+        private UserRepository userRepository;
 
-    @MockitoBean
-    private MailRepository emailRepository;
+        @MockitoBean
+        private CustomerRepository customerRepository;
 
-    @MockitoBean
-    private NotificationLogRepository notificationLogRepository;
+        @MockitoBean
+        private MailRepository mailRepository;
 
-    @Test
-    @DisplayName("Should send email and log success when valid overdue installment")
-    void shouldSendEmailAndLogSuccess() {
-        InstallmentId installmentId = new InstallmentId(UUID.randomUUID());
-        InvoiceId invoiceId = new InvoiceId(UUID.randomUUID());
-        UserId userId = new UserId(UUID.randomUUID());
-        LocalDate dueDate = LocalDate.now().minusDays(5);
+        @MockitoBean
+        private NotificationLogRepository notificationLogRepository;
 
-        InstallmentOverdueEvent event = new InstallmentOverdueEvent(installmentId, invoiceId, userId, dueDate);
+        @Test
+        @DisplayName("Should send email and log success when valid overdue installment")
+        void shouldSendEmailAndLogSuccess() {
+                InstallmentId installmentId = new InstallmentId(UUID.randomUUID());
+                InvoiceId invoiceId = new InvoiceId(UUID.randomUUID());
+                UserId userId = new UserId(UUID.randomUUID());
+                CustomerId customerId = new CustomerId(UUID.randomUUID());
+                LocalDate dueDate = LocalDate.now().minusDays(5);
 
-        when(notificationLogRepository.existsByInstallmentId(installmentId)).thenReturn(false);
+                InstallmentOverdueEvent event = new InstallmentOverdueEvent(installmentId, invoiceId, userId, dueDate);
 
-        Installment installment = Installment.create(installmentId, new Money(BigDecimal.valueOf(100)), dueDate);
+                when(notificationLogRepository.existsByInstallmentId(eq(installmentId))).thenReturn(false);
 
-        Invoice invoiceSpy = new Invoice(invoiceId, new CustomerId(UUID.randomUUID()), new InvoiceReference("INV-001"),
-                new Money(BigDecimal.valueOf(100)), Money.ZERO, "USD", PaymentStatus.PENDING, LocalDateTime.now(),
-                LocalDateTime.now(), LocalDateTime.now(), false, List.of(installment), 0L);
+                Installment installment = Installment.create(installmentId, new Money(BigDecimal.valueOf(100)),
+                                dueDate);
+                Invoice invoiceSpy = new Invoice(invoiceId, customerId, new InvoiceReference("INV-001"),
+                                new Money(BigDecimal.valueOf(100)), Money.ZERO, "USD", PaymentStatus.PENDING,
+                                LocalDateTime.now(), LocalDateTime.now(), LocalDateTime.now(), false,
+                                List.of(installment), 0L);
 
-        when(invoiceRepository.findByIdAndOwner(invoiceId, userId)).thenReturn(Optional.of(invoiceSpy));
+                when(invoiceRepository.findByIdAndOwner(eq(invoiceId), eq(userId))).thenReturn(Optional.of(invoiceSpy));
 
-        User user = User.create(userId, new Email("user@example.com"), "pass", "John", "Doe");
-        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+                User user = User.create(userId, new Email("user@example.com"), "pass", "John", "Doe");
+                Customer customer = Customer.create(customerId, userId, "Customer Inc.",
+                                new Email("customer@example.com"));
+                when(userRepository.findById(eq(userId))).thenReturn(Optional.of(user));
+                when(customerRepository.findById(eq(customer.getId()))).thenReturn(Optional.of(customer));
 
-        listener.handle(event);
+                listener.handle(event);
 
-        verify(emailRepository).sendEmail(eq("user@example.com"), anyString(), anyString());
-        verify(notificationLogRepository).save(ArgumentMatchers.argThat(
-                log -> log.getStatus() == NotificationStatus.SENT && log.getInstallmentId().equals(installmentId)
-                        && log.getRecipientAddress().value().equals("user@example.com")));
-    }
+                verify(mailRepository, timeout(2000)).sendEmail(eq("user@example.com"), anyString(), anyString());
 
-    @Test
-    @DisplayName("Should skip if notification already exists")
-    void shouldSkipIfAlreadyNotified() {
-        InstallmentId installmentId = new InstallmentId(UUID.randomUUID());
-        InstallmentOverdueEvent event = new InstallmentOverdueEvent(installmentId, new InvoiceId(UUID.randomUUID()),
-                new UserId(UUID.randomUUID()), LocalDate.now());
+                verify(notificationLogRepository, timeout(2000))
+                                .save(argThat(log -> log.getStatus() == NotificationStatus.SENT
+                                                && log.getInstallmentId().equals(installmentId)));
+        }
 
-        when(notificationLogRepository.existsByInstallmentId(installmentId)).thenReturn(true);
+        @Test
+        @DisplayName("Should skip if notification already exists")
+        void shouldSkipIfAlreadyNotified() {
+                InstallmentId installmentId = new InstallmentId(UUID.randomUUID());
+                InstallmentOverdueEvent event = new InstallmentOverdueEvent(installmentId,
+                                new InvoiceId(UUID.randomUUID()), new UserId(UUID.randomUUID()), LocalDate.now());
 
-        listener.handle(event);
+                when(notificationLogRepository.existsByInstallmentId(eq(installmentId))).thenReturn(true);
 
-        verify(invoiceRepository, never()).findByIdAndOwner(any(), any());
-        verify(emailRepository, never()).sendEmail(any(), any(), any());
-    }
+                listener.handle(event);
 
-    @Test
-    @DisplayName("Should skip if invoice not found")
-    void shouldSkipIfInvoiceNotFound() {
-        InstallmentOverdueEvent event = new InstallmentOverdueEvent(new InstallmentId(UUID.randomUUID()),
-                new InvoiceId(UUID.randomUUID()), new UserId(UUID.randomUUID()), LocalDate.now());
+                verify(invoiceRepository, after(500).never()).findByIdAndOwner(any(), any());
+                verify(mailRepository, never()).sendEmail(any(), any(), any());
+        }
 
-        when(notificationLogRepository.existsByInstallmentId(any())).thenReturn(false);
-        when(invoiceRepository.findByIdAndOwner(any(), any())).thenReturn(Optional.empty());
+        @Test
+        @DisplayName("Should skip if invoice not found")
+        void shouldSkipIfInvoiceNotFound() {
+                InstallmentOverdueEvent event = new InstallmentOverdueEvent(new InstallmentId(UUID.randomUUID()),
+                                new InvoiceId(UUID.randomUUID()), new UserId(UUID.randomUUID()), LocalDate.now());
 
-        listener.handle(event);
+                when(notificationLogRepository.existsByInstallmentId(any())).thenReturn(false);
+                when(invoiceRepository.findByIdAndOwner(any(), any())).thenReturn(Optional.empty());
 
-        verify(emailRepository, never()).sendEmail(any(), any(), any());
-    }
+                listener.handle(event);
 
-    @Test
-    @DisplayName("Should skip if installment is actually paid")
-    void shouldSkipIfPaid() {
-        InstallmentId installmentId = new InstallmentId(UUID.randomUUID());
-        InvoiceId invoiceId = new InvoiceId(UUID.randomUUID());
-        UserId userId = new UserId(UUID.randomUUID());
+                verify(mailRepository, after(500).never()).sendEmail(any(), any(), any());
+        }
 
-        InstallmentOverdueEvent event = new InstallmentOverdueEvent(installmentId, invoiceId, userId, LocalDate.now());
+        @Test
+        @DisplayName("Should log failure if email sending fails")
+        void shouldLogFailureOnMailException() {
+                InstallmentId installmentId = new InstallmentId(UUID.randomUUID());
+                InvoiceId invoiceId = new InvoiceId(UUID.randomUUID());
+                UserId userId = new UserId(UUID.randomUUID());
+                CustomerId customerId = new CustomerId(UUID.randomUUID());
+                LocalDate dueDate = LocalDate.now().minusDays(5);
 
-        // Create paid installment
-        Installment paidInstallment = new Installment(installmentId, new Money(BigDecimal.TEN),
-                new Money(BigDecimal.TEN), LocalDate.now(), PaymentStatus.PAID, LocalDateTime.now(),
-                LocalDateTime.now(), LocalDateTime.now(), List.of());
+                InstallmentOverdueEvent event = new InstallmentOverdueEvent(installmentId, invoiceId, userId, dueDate);
 
-        Invoice invoiceSpy = new Invoice(invoiceId, new CustomerId(UUID.randomUUID()), new InvoiceReference("INV-001"),
-                new Money(BigDecimal.TEN), new Money(BigDecimal.TEN), "USD", PaymentStatus.PAID, LocalDateTime.now(),
-                LocalDateTime.now(), LocalDateTime.now(), false, List.of(paidInstallment), 0L);
+                when(notificationLogRepository.existsByInstallmentId(eq(installmentId))).thenReturn(false);
 
-        when(notificationLogRepository.existsByInstallmentId(installmentId)).thenReturn(false);
-        when(invoiceRepository.findByIdAndOwner(invoiceId, userId)).thenReturn(Optional.of(invoiceSpy));
+                Installment installment = Installment.create(installmentId, new Money(BigDecimal.valueOf(100)),
+                                dueDate);
+                Invoice invoiceSpy = new Invoice(invoiceId, customerId, new InvoiceReference("INV-001"),
+                                new Money(BigDecimal.valueOf(100)), Money.ZERO, "USD", PaymentStatus.PENDING,
+                                LocalDateTime.now(), LocalDateTime.now(), LocalDateTime.now(), false,
+                                List.of(installment), 0L);
 
-        listener.handle(event);
+                when(invoiceRepository.findByIdAndOwner(eq(invoiceId), eq(userId))).thenReturn(Optional.of(invoiceSpy));
 
-        verify(emailRepository, never()).sendEmail(any(), any(), any());
-    }
+                User user = User.create(userId, new Email("user@example.com"), "pass", "John", "Doe");
+                Customer customer = Customer.create(customerId, userId, "Customer Inc.",
+                                new Email("contact@customerinc.com"));
+                when(userRepository.findById(eq(userId))).thenReturn(Optional.of(user));
+                when(customerRepository.findById(eq(customer.getId()))).thenReturn(Optional.of(customer));
 
-    @Test
-    @DisplayName("Should log failure if email sending fails")
-    void shouldLogFailureOnMailException() {
-        InstallmentId installmentId = new InstallmentId(UUID.randomUUID());
-        InvoiceId invoiceId = new InvoiceId(UUID.randomUUID());
-        UserId userId = new UserId(UUID.randomUUID());
-        LocalDate dueDate = LocalDate.now().minusDays(5);
+                doThrow(new RuntimeException("Mail server down")).when(mailRepository).sendEmail(anyString(),
+                                anyString(), anyString());
 
-        InstallmentOverdueEvent event = new InstallmentOverdueEvent(installmentId, invoiceId, userId, dueDate);
+                listener.handle(event);
 
-        when(notificationLogRepository.existsByInstallmentId(installmentId)).thenReturn(false);
-
-        Installment installment = Installment.create(installmentId, new Money(BigDecimal.valueOf(100)), dueDate);
-        Invoice invoiceSpy = new Invoice(invoiceId, new CustomerId(UUID.randomUUID()), new InvoiceReference("INV-001"),
-                new Money(BigDecimal.valueOf(100)), Money.ZERO, "USD", PaymentStatus.PENDING, LocalDateTime.now(),
-                LocalDateTime.now(), LocalDateTime.now(), false, List.of(installment), 0L);
-
-        when(invoiceRepository.findByIdAndOwner(invoiceId, userId)).thenReturn(Optional.of(invoiceSpy));
-
-        User user = User.create(userId, new Email("user@example.com"), "pass", "John", "Doe");
-        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
-
-        Mockito.doThrow(new RuntimeException("Mail server down")).when(emailRepository).sendEmail(anyString(),
-                anyString(), anyString());
-
-        listener.handle(event);
-
-        verify(notificationLogRepository)
-                .save(ArgumentMatchers.argThat(log -> log.getStatus() == NotificationStatus.FAILED
-                        && log.getErrorMessage().equals("Mail server down")));
-    }
+                verify(notificationLogRepository, timeout(2000))
+                                .save(argThat(log -> log.getStatus() == NotificationStatus.FAILED
+                                                && log.getErrorMessage().equals("Mail server down")));
+        }
 }

@@ -30,7 +30,10 @@ spring:
           auth: true
           starttls:
             enable: true
-
+management:
+  health:
+    mail:
+      enabled: false
 server:
   error:
     include-message: always

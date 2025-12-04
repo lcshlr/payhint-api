@@ -19,6 +19,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.PostLoad;
+import jakarta.persistence.PostPersist;
 import jakarta.persistence.Table;
 import jakarta.persistence.Transient;
 import jakarta.persistence.UniqueConstraint;
@@ -90,6 +91,7 @@ public class InvoiceJpaEntity implements Persistable<UUID> {
     private Set<InstallmentJpaEntity> installments = new LinkedHashSet<>();
 
     @PostLoad
+    @PostPersist
     protected void onPostLoad() {
         this.isNew = false;
     }

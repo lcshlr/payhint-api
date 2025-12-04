@@ -12,7 +12,9 @@ import com.payhint.api.domain.billing.exception.InstallmentDoesNotBelongToInvoic
 import com.payhint.api.domain.billing.model.Installment;
 import com.payhint.api.domain.billing.model.Invoice;
 import com.payhint.api.domain.billing.repository.InvoiceRepository;
+import com.payhint.api.domain.crm.model.Customer;
 import com.payhint.api.domain.crm.model.User;
+import com.payhint.api.domain.crm.repository.CustomerRepository;
 import com.payhint.api.domain.crm.repository.UserRepository;
 import com.payhint.api.domain.notification.model.NotificationLog;
 import com.payhint.api.domain.notification.repository.NotificationLogRepository;
@@ -27,6 +29,7 @@ public class OverdueInstallmentListener {
 
     private final InvoiceRepository invoiceRepository;
     private final UserRepository userRepository;
+    private final CustomerRepository customerRepository;
     private final MailRepository emailService;
     private final NotificationLogRepository notificationLogRepository;
 
@@ -63,11 +66,14 @@ public class OverdueInstallmentListener {
 
     private void sendNotification(InstallmentOverdueEvent event, Invoice invoice, Installment installment) {
         User user = userRepository.findById(event.userId()).orElseThrow(() -> new NotFoundException("User not found"));
+        Customer customer = customerRepository.findById(invoice.getCustomerId())
+                .orElseThrow(() -> new NotFoundException("Customer not found"));
 
         String subject = "Action Required: Overdue Payment Detected";
         String body = String.format(
-                "Hello %s,\n\nThe installment due on %s for invoice %s is overdue.\nPlease check your dashboard.",
-                user.getFirstName(), installment.getDueDate(), invoice.getInvoiceReference());
+                "Hello %s,\n\nThe installment due on %s for %s invoice %s is overdue.\nPlease check your dashboard.",
+                user.getFirstName(), installment.getDueDate(), customer.getCompanyName(),
+                invoice.getInvoiceReference());
 
         try {
             emailService.sendEmail(user.getEmail().value(), subject, body);
